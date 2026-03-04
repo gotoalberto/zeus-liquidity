@@ -5,6 +5,7 @@ import { PriceChart } from "@/components/liquidity/PriceChart"
 import { MarketStats } from "@/components/ui/MarketStats"
 import { PositionsList } from "@/components/positions/PositionsList"
 import { AddLiquidityForm } from "@/components/liquidity/AddLiquidityForm"
+import { WaveDivider } from "@/components/ui/WaveDivider"
 import { useAppKit } from "@reown/appkit/react"
 import { useAccount } from "wagmi"
 import Image from "next/image"
@@ -29,7 +30,7 @@ export default function Home() {
                 style={{ border: "3px solid #000", boxShadow: "3px 3px 0 #000" }}
               >
                 <Image
-                  src="/zeus-avatar.png"
+                  src="/zeus-avatar-new.png"
                   alt="ZEUS"
                   width={44}
                   height={44}
@@ -65,7 +66,6 @@ export default function Home() {
                   {label}
                 </a>
               ))}
-              {/* X (Twitter) icon */}
               <a
                 href="https://twitter.com/thezeustoken"
                 target="_blank"
@@ -128,7 +128,7 @@ export default function Home() {
           <div
             className="md:hidden"
             style={{
-              background: "rgba(75, 191, 224, 0.97)",
+              background: "rgba(67, 148, 244, 0.97)",
               borderTop: "3px solid #000",
               padding: "1.5rem 1.25rem",
             }}
@@ -175,47 +175,87 @@ export default function Home() {
         )}
       </header>
 
-      {/* HERO — pepes.dog style */}
-      <section
-        className="relative flex flex-col items-center justify-center overflow-hidden"
-        style={{ minHeight: "85vh", paddingBottom: "clamp(120px, 22vw, 280px)" }}
-      >
-        {/* Decorative characters — hidden on mobile to avoid clutter */}
-        <div className="absolute left-0 bottom-0 z-10 hidden sm:block pointer-events-none" style={{ width: "clamp(120px, 14vw, 224px)" }}>
-          <Image src="/zeus-outfit-1.png" alt="" width={224} height={224} className="object-contain w-full h-full" />
-        </div>
-        <div className="absolute right-0 top-1/3 z-10 hidden sm:block pointer-events-none" style={{ width: "clamp(100px, 11vw, 176px)" }}>
-          <Image src="/zeus-outfit-2.png" alt="" width={176} height={176} className="object-contain w-full h-full" />
-        </div>
-        <div className="absolute left-1/4 top-6 z-10 hidden lg:block pointer-events-none" style={{ width: "clamp(80px, 8vw, 144px)" }}>
-          <Image src="/zeus-outfit-3.png" alt="" width={144} height={144} className="object-contain w-full h-full" />
-        </div>
-        <div className="absolute right-0 bottom-0 z-10 hidden sm:block pointer-events-none" style={{ width: "clamp(100px, 11vw, 176px)" }}>
-          <Image src="/pepe-defi.png" alt="" width={176} height={176} className="object-contain w-full h-full" />
-        </div>
-        <div className="absolute left-0 top-1/3 z-10 hidden lg:block pointer-events-none" style={{ width: "clamp(80px, 8vw, 144px)" }}>
-          <Image src="/pepe-outfit-1.png" alt="" width={144} height={144} className="object-contain w-full h-full" />
+      {/* HERO — zeuscoin.vip style: characters flanking the title */}
+      <section className="relative overflow-hidden" style={{ paddingTop: "3rem", paddingBottom: "0" }}>
+
+        {/* Desktop: flanking characters row */}
+        <div className="hidden lg:flex items-end justify-center gap-0" style={{ minHeight: "480px" }}>
+
+          {/* Left side characters */}
+          <div className="flex items-end gap-0 flex-shrink-0">
+            <div style={{ width: 160, marginBottom: 0 }} className="animate-float">
+              <Image src="/zeus-lay.png" alt="" width={160} height={160} className="object-contain w-full" />
+            </div>
+            <div style={{ width: 180, marginBottom: 0 }}>
+              <Image src="/zeus-sit.png" alt="" width={180} height={180} className="object-contain w-full" />
+            </div>
+          </div>
+
+          {/* Center: title + CTA */}
+          <div className="flex flex-col items-center text-center px-8 pb-8 flex-shrink-0" style={{ minWidth: 320 }}>
+            <h1 className="hero-title">ZEUS</h1>
+            <p
+              className="text-white font-bold mt-1 mb-3"
+              style={{
+                fontFamily: "var(--font-titan-one)",
+                fontSize: "clamp(1rem, 3vw, 1.8rem)",
+                WebkitTextStroke: "2px #000",
+                textShadow: "3px 3px 0 #000",
+              }}
+            >
+              PEPE&apos;S DOG
+            </p>
+            <p
+              className="text-white font-bold mb-8"
+              style={{
+                fontFamily: "var(--font-titan-one)",
+                fontSize: "clamp(0.85rem, 1.5vw, 1rem)",
+                textShadow: "2px 2px 0 #000",
+                WebkitTextStroke: "0.5px #000",
+              }}
+            >
+              Provide liquidity. Earn fees.
+            </p>
+            <a
+              href="#addlp"
+              className="btn-zeus"
+              style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", padding: "0.8rem 2.2rem" }}
+            >
+              Provide Liquidity
+            </a>
+          </div>
+
+          {/* Right side characters */}
+          <div className="flex items-end gap-0 flex-shrink-0">
+            <div style={{ width: 200, marginBottom: 0 }}>
+              <Image src="/zeus-hero.png" alt="Zeus" width={200} height={200} className="object-contain w-full" />
+            </div>
+            <div style={{ width: 160, marginBottom: 0, animationDelay: "1s" }} className="animate-float">
+              <Image src="/pepe-hero.png" alt="" width={160} height={160} className="object-contain w-full" />
+            </div>
+          </div>
+
         </div>
 
-        {/* Central content */}
-        <div className="relative z-20 text-center px-6 flex flex-col items-center">
+        {/* Mobile: simple centered layout */}
+        <div className="lg:hidden flex flex-col items-center text-center px-6 pb-8">
           <h1 className="hero-title">ZEUS</h1>
           <p
             className="text-white font-bold mt-1 mb-3"
             style={{
               fontFamily: "var(--font-titan-one)",
-              fontSize: "clamp(1rem, 4vw, 2rem)",
+              fontSize: "clamp(1rem, 6vw, 1.6rem)",
               WebkitTextStroke: "2px #000",
               textShadow: "3px 3px 0 #000",
             }}
           >
-            PEPE'S DOG
+            PEPE&apos;S DOG
           </p>
           <p
-            className="text-white font-bold mb-8"
+            className="text-white font-bold mb-6"
             style={{
               fontFamily: "var(--font-titan-one)",
-              fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)",
+              fontSize: "0.9rem",
               textShadow: "2px 2px 0 #000",
               WebkitTextStroke: "0.5px #000",
             }}
@@ -224,26 +264,25 @@ export default function Home() {
           </p>
           <a
             href="#addlp"
-            className="btn-zeus"
-            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", padding: "0.8rem 2.2rem" }}
+            className="btn-zeus mb-6"
+            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1rem", padding: "0.75rem 2rem" }}
           >
             Provide Liquidity
           </a>
+          <div style={{ width: "clamp(140px, 40vw, 220px)" }}>
+            <Image src="/zeus-hero.png" alt="Zeus" width={220} height={220} className="object-contain w-full" />
+          </div>
         </div>
 
-        {/* Zeus hero center — bottom center, scales with viewport */}
-        <div
-          className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
-          style={{ width: "clamp(140px, 22vw, 300px)" }}
-        >
-          <Image src="/hero-zeus-center.png" alt="Zeus" width={300} height={300} className="object-contain w-full h-full" />
-        </div>
       </section>
+
+      {/* WAVE DIVIDER — yellow, top edge of ticker */}
+      <WaveDivider color="#FFE600" />
 
       {/* TICKER */}
       <div
         className="overflow-hidden py-2 md:py-3 relative z-10"
-        style={{ background: "#FFE600", borderTop: "3px solid #000", borderBottom: "3px solid #000" }}
+        style={{ background: "#FFE600", borderBottom: "3px solid #000" }}
       >
         <div className="marquee-track">
           {[1, 2].map((rep) => (
@@ -265,6 +304,9 @@ export default function Home() {
         </div>
       </div>
 
+      {/* WAVE DIVIDER — bottom edge of ticker, flipped */}
+      <WaveDivider color="#FFE600" flip />
+
       {/* MAIN CONTENT */}
       <main style={{ maxWidth: "76.875rem", margin: "0 auto", padding: "3.5rem 1.25rem" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "3.5rem" }}>
@@ -276,20 +318,28 @@ export default function Home() {
           </section>
 
           {/* PRICE CHART */}
-          <section id="chart">
+          <section id="chart" className="section-alt">
             <h2 className="section-title mb-6">Price Chart</h2>
             <PriceChart />
           </section>
 
           {/* YOUR POSITIONS */}
-          <section id="positions">
+          <section id="positions" className="relative">
             <h2 className="section-title mb-6">Your Positions</h2>
+            {/* Decorative Zeus on desktop */}
+            <div className="absolute right-0 top-0 hidden xl:block pointer-events-none" style={{ width: 120, transform: "translateX(50%)" }}>
+              <Image src="/zeus-walk.png" alt="" width={120} height={120} className="object-contain w-full" />
+            </div>
             <PositionsList />
           </section>
 
           {/* ADD LIQUIDITY */}
-          <section id="addlp">
+          <section id="addlp" className="section-alt relative">
             <h2 className="section-title mb-6">Add Liquidity</h2>
+            {/* Decorative Pepe on desktop */}
+            <div className="absolute left-0 top-0 hidden xl:block pointer-events-none" style={{ width: 120, transform: "translateX(-50%)" }}>
+              <Image src="/pepe-hero.png" alt="" width={120} height={120} className="object-contain w-full" />
+            </div>
             <div className="card-zeus p-6 md:p-8">
               <AddLiquidityForm />
             </div>
@@ -298,12 +348,13 @@ export default function Home() {
         </div>
       </main>
 
+      {/* WAVE DIVIDER — top of footer */}
+      <WaveDivider color="#1a6fd4" />
+
       {/* FOOTER */}
       <footer
         style={{
-          borderTop: "3px solid #000",
           background: "#1a6fd4",
-          marginTop: "2rem",
           padding: "2.5rem 1.25rem",
         }}
       >
@@ -311,7 +362,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <Image
-                src="/zeus-avatar.png"
+                src="/zeus-avatar-new.png"
                 alt="ZEUS"
                 width={48}
                 height={48}
