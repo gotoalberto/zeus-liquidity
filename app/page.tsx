@@ -1,17 +1,25 @@
+"use client"
+
 /**
  * ZEUS Liquidity Manager — Main Page
  *
  * Features:
  * - Price chart with TradingView lightweight-charts
  * - Market statistics (price, mcap, volume, 24h change)
+ * - Positions list with real data from Alchemy
  * - Add liquidity form (coming in Step 6)
- * - Positions list (coming in Step 5)
  */
 
 import { PriceChart } from "@/components/liquidity/PriceChart"
 import { MarketStats } from "@/components/ui/MarketStats"
+import { PositionsList } from "@/components/positions/PositionsList"
+import { useAppKit } from "@reown/appkit/react"
+import { useAccount } from "wagmi"
 
 export default function Home() {
+  const { open } = useAppKit()
+  const { address, isConnected } = useAccount()
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -26,9 +34,13 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {/* Wallet connect button will go here (Step 2) */}
-            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity">
-              Connect Wallet
+            <button
+              onClick={() => open()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
+            >
+              {isConnected
+                ? `${address?.slice(0, 6)}...${address?.slice(-4)}`
+                : "Connect Wallet"}
             </button>
           </div>
         </div>
@@ -49,28 +61,21 @@ export default function Home() {
             <PriceChart />
           </section>
 
-          {/* Coming Soon Sections */}
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Add Liquidity Form Placeholder */}
-            <section>
-              <h2 className="text-lg font-semibold mb-4">Add Liquidity</h2>
-              <div className="bg-card rounded-lg border border-border p-8 text-center">
-                <p className="text-muted-foreground">
-                  Add liquidity form coming in Step 6
-                </p>
-              </div>
-            </section>
+          {/* Positions Section */}
+          <section>
+            <h2 className="text-lg font-semibold mb-4">Your Positions</h2>
+            <PositionsList />
+          </section>
 
-            {/* Positions List Placeholder */}
-            <section>
-              <h2 className="text-lg font-semibold mb-4">Your Positions</h2>
-              <div className="bg-card rounded-lg border border-border p-8 text-center">
-                <p className="text-muted-foreground">
-                  Positions list coming in Step 5
-                </p>
-              </div>
-            </section>
-          </div>
+          {/* Add Liquidity Placeholder */}
+          <section>
+            <h2 className="text-lg font-semibold mb-4">Add Liquidity</h2>
+            <div className="bg-card rounded-lg border border-border p-8 text-center">
+              <p className="text-muted-foreground">
+                Add liquidity form coming in Step 6
+              </p>
+            </div>
+          </section>
         </div>
       </main>
 

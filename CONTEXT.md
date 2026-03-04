@@ -1,7 +1,7 @@
 # Zeus Liquidity Manager — Build Context
 
 ## Current Status
-**STEP 4 of 8: COMPLETE** — Moving to Step 5
+**STEP 5 of 8: COMPLETE** — Moving to Step 6
 
 ## What's Built
 - ✅ **Step 1**: Next.js 14 project initialized with TypeScript, Tailwind CSS, App Router
@@ -21,13 +21,19 @@
 - ✅ **Step 4**: `__tests__/mcap.test.ts` — 17 unit tests validating tick math (all passing)
 - ✅ **Step 4**: Updated tsconfig.json target to ES2020 for BigInt support
 - ✅ **Step 4**: Vitest configured for testing
-- ✅ **Step 4**: Build and tests verification successful
+- ✅ **Step 5**: `lib/services/alchemy.ts` — Complete Alchemy RPC client with batch calls
+- ✅ **Step 5**: `lib/uniswap/positions.ts` — Position fetching, decoding, and enrichment with market data
+- ✅ **Step 5**: `hooks/usePositions.ts` — React Query hooks for positions and portfolio value
+- ✅ **Step 5**: `components/positions/PositionCard.tsx` — Individual position display with MCAP range, status badge, token amounts, uncollected fees
+- ✅ **Step 5**: `components/positions/PositionsList.tsx` — Full positions list with portfolio summary and empty/loading/error states
+- ✅ **Step 5**: Updated `app/page.tsx` — Integrated wallet connection button (AppKit) and positions display
+- ✅ **Step 5**: Build verification successful
 
 ## What's Next
-- **Step 5**: Alchemy API integration (`lib/services/alchemy.ts`)
-- **Step 5**: Position fetching and decoding (`lib/uniswap/positions.ts`)
-- **Step 5**: `hooks/usePositions.ts` for React Query integration
-- **Step 5**: `components/positions/PositionCard.tsx` and `PositionsList.tsx`
+- **Step 6**: MCAP-based range selector UI component
+- **Step 6**: Add liquidity form with token inputs
+- **Step 6**: Uniswap V4 PositionManager.mint() integration
+- **Step 6**: Token approval flow (ZEUS ERC20)
 
 ## Critical Constants
 - ZEUS address: 0x0f7dC5D02CC1E1f5Ee47854d534D332A1081cCC8
