@@ -22,99 +22,75 @@ function formatTokenAmount(amount: bigint, decimals: number, maxDecimals: number
 
 export function PositionCard({ position, onCollectFees, onClosePosition }: PositionCardProps) {
   const statusConfig = {
-    "in-range": {
-      label: "In Range",
-      className: "badge-inrange",
-    },
-    "out-of-range": {
-      label: "Out of Range",
-      className: "badge-outrange",
-    },
-    closed: {
-      label: "Closed",
-      className: "badge-closed",
-    },
+    "in-range": { label: "In Range", className: "badge-inrange" },
+    "out-of-range": { label: "Out of Range", className: "badge-outrange" },
+    closed: { label: "Closed", className: "badge-closed" },
   }
 
   const config = statusConfig[position.status]
 
   return (
-    <div className="card-zeus p-6 space-y-5">
+    <div className="card-glass p-6 flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-gray-500 font-mono">
+          <span style={{ fontSize: "0.75rem", color: "var(--foreground-muted)", fontFamily: "var(--font-mono)" }}>
             #{position.tokenId.toString()}
           </span>
           <span className={config.className}>{config.label}</span>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
+          <p style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", color: "#fff", letterSpacing: "0.02em" }}>
             {formatCurrency(position.totalValueUsd)}
           </p>
-          <p className="text-xs font-bold text-gray-500">Total Value</p>
+          <p style={{ fontSize: "0.7rem", color: "var(--foreground-muted)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>Total Value</p>
         </div>
       </div>
 
-      <hr className="divider-zeus" style={{ margin: "0" }} />
+      <div style={{ height: 1, background: "var(--border)" }} />
 
       {/* MCAP Range */}
-      <div
-        className="rounded-xl p-4"
-        style={{ background: "#f0e64e", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
-      >
-        <p className="text-xs uppercase tracking-widest mb-2 font-bold text-black/60">
+      <div style={{ background: "rgba(255,230,0,0.08)", border: "1px solid rgba(255,230,0,0.2)", borderRadius: "0.75rem", padding: "0.875rem 1rem" }}>
+        <p style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,230,0,0.6)", marginBottom: "0.4rem" }}>
           Market Cap Range
         </p>
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", color: "#FFE600" }}>
             {formatCurrency(position.minMcap)}
           </span>
-          <span className="text-xl font-bold">→</span>
-          <span className="text-lg font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
+          <span style={{ color: "var(--foreground-muted)", fontSize: "0.9rem" }}>→</span>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", color: "#FFE600" }}>
             {formatCurrency(position.maxMcap)}
           </span>
         </div>
       </div>
 
       {/* Token Amounts */}
-      <div className="grid grid-cols-2 gap-4">
-        <div
-          className="rounded-xl p-3"
-          style={{ background: "#d4e8ff", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
-        >
-          <p className="text-xs font-bold text-gray-600 mb-1">ETH</p>
-          <p className="text-lg font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
-            {formatTokenAmount(position.amount0, 18, 6)}
-          </p>
-        </div>
-        <div
-          className="rounded-xl p-3"
-          style={{ background: "#d4e8ff", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
-        >
-          <p className="text-xs font-bold text-gray-600 mb-1">ZEUS</p>
-          <p className="text-lg font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
-            {formatTokenAmount(position.amount1, ZEUS_DECIMALS, 4)}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { symbol: "ETH", amount: formatTokenAmount(position.amount0, 18, 6) },
+          { symbol: "ZEUS", amount: formatTokenAmount(position.amount1, ZEUS_DECIMALS, 4) },
+        ].map(({ symbol, amount }) => (
+          <div key={symbol} style={{ background: "rgba(67,148,244,0.08)", border: "1px solid rgba(67,148,244,0.2)", borderRadius: "0.75rem", padding: "0.75rem 1rem" }}>
+            <p style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(67,148,244,0.7)", marginBottom: "0.3rem" }}>{symbol}</p>
+            <p style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", color: "#4394f4" }}>{amount}</p>
+          </div>
+        ))}
       </div>
 
       {/* Uncollected Fees */}
       {position.uncollectedFeesUsd > 0.01 && (
-        <div
-          className="rounded-xl p-4 flex items-center justify-between"
-          style={{ background: "#3bff8a", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
-        >
+        <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: "0.75rem", padding: "0.875rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p className="text-xs font-bold text-black/60">Uncollected Fees</p>
-            <p className="text-xl font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
+            <p style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(34,197,94,0.6)", marginBottom: "0.3rem" }}>Uncollected Fees</p>
+            <p style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", color: "#22c55e" }}>
               {formatCurrency(position.uncollectedFeesUsd)}
             </p>
           </div>
           <button
             onClick={() => onCollectFees?.(position.tokenId)}
-            className="btn-zeus"
-            style={{ fontFamily: "var(--font-titan-one)", fontSize: "0.95rem", padding: "0.5rem 1.5rem" }}
+            className="btn-primary"
+            style={{ fontSize: "0.875rem", padding: "0.5rem 1.25rem" }}
           >
             Collect
           </button>
@@ -123,30 +99,22 @@ export function PositionCard({ position, onCollectFees, onClosePosition }: Posit
 
       {/* Advanced Details */}
       <details className="group">
-        <summary className="cursor-pointer text-sm font-bold text-gray-500 hover:text-black transition-colors list-none flex items-center gap-2 select-none">
-          <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+        <summary style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground-muted)", listStyle: "none", display: "flex", alignItems: "center", gap: "0.4rem", userSelect: "none" }}
+          className="hover:text-white transition-colors">
+          <span className="group-open:rotate-90 transition-transform inline-block" style={{ fontSize: "0.6rem" }}>▶</span>
           Advanced Details
         </summary>
-        <div
-          className="mt-3 space-y-2 text-sm rounded-xl p-3"
-          style={{ background: "#d4e8ff", border: "2px solid #000" }}
-        >
-          <div className="flex justify-between">
-            <span className="font-bold text-gray-600">Price Range (ETH):</span>
-            <span className="font-mono text-xs font-bold">
-              {position.minPriceEth.toFixed(8)} – {position.maxPriceEth.toFixed(8)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-bold text-gray-600">Tick Range:</span>
-            <span className="font-mono text-xs font-bold">
-              {position.tickLower} – {position.tickUpper}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-bold text-gray-600">Liquidity:</span>
-            <span className="font-mono text-xs font-bold">{position.liquidity.toString()}</span>
-          </div>
+        <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.8rem", background: "rgba(255,255,255,0.03)", borderRadius: "0.5rem", padding: "0.75rem 1rem", border: "1px solid var(--border)" }}>
+          {[
+            { label: "Price Range (ETH)", value: `${position.minPriceEth.toFixed(8)} – ${position.maxPriceEth.toFixed(8)}` },
+            { label: "Tick Range", value: `${position.tickLower} – ${position.tickUpper}` },
+            { label: "Liquidity", value: position.liquidity.toString() },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex justify-between">
+              <span style={{ color: "var(--foreground-muted)", fontWeight: 600 }}>{label}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "#fff" }}>{value}</span>
+            </div>
+          ))}
         </div>
       </details>
 
@@ -155,14 +123,8 @@ export function PositionCard({ position, onCollectFees, onClosePosition }: Posit
         <div className="flex gap-2 pt-1">
           <button
             onClick={() => onClosePosition?.(position.tokenId)}
-            className="flex-1 px-4 py-2.5 font-bold text-sm rounded-2xl transition-all"
-            style={{
-              background: "#fff",
-              border: "2px solid #ff4444",
-              color: "#ff4444",
-              boxShadow: "3px 3px 0 #ff4444",
-              fontFamily: "var(--font-titan-one)",
-            }}
+            className="btn-outline flex-1"
+            style={{ fontSize: "0.875rem", padding: "0.6rem 1rem", borderColor: "rgba(239,68,68,0.4)", color: "#ef4444" }}
           >
             Close Position
           </button>

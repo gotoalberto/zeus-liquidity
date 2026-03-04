@@ -23,42 +23,32 @@ interface StatCardProps {
   label: string
   value: string
   sub?: string
-  subColor?: string
-  variant?: "yellow" | "blue" | "white" | "green"
+  isPositive?: boolean
+  accent?: "yellow" | "blue" | "green" | "default"
 }
 
-function StatCard({ label, value, sub, subColor, variant = "white" }: StatCardProps) {
-  const bgMap = {
-    yellow: { background: "#f0e64e", color: "#000" },
-    blue: { background: "#1a6fd4", color: "#fff" },
-    white: { background: "#ffffff", color: "#000" },
-    green: { background: "#3bff8a", color: "#000" },
+function StatCard({ label, value, sub, isPositive, accent = "default" }: StatCardProps) {
+  const accentColors = {
+    yellow: "#FFE600",
+    blue: "#4394f4",
+    green: "#22c55e",
+    default: "rgba(255,255,255,0.7)",
   }
-  const style = bgMap[variant]
+  const valueColor = accentColors[accent]
 
   return (
     <div
-      className="p-5 rounded-2xl"
-      style={{
-        background: style.background,
-        color: style.color,
-        border: "3px solid #000",
-        boxShadow: "5px 5px 0 #000",
-      }}
+      className="card-glass p-5 flex flex-col gap-2"
+      style={{ minHeight: "110px" }}
     >
-      <p
-        className="text-xs uppercase tracking-widest font-bold mb-2 opacity-70"
-      >
+      <p style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)" }}>
         {label}
       </p>
-      <p
-        className="text-2xl font-bold"
-        style={{ fontFamily: "var(--font-titan-one)", letterSpacing: "0.02em" }}
-      >
+      <p style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", color: valueColor, letterSpacing: "0.02em", lineHeight: 1 }}>
         {value}
       </p>
       {sub && (
-        <p className={`text-sm font-bold mt-1 ${subColor || "opacity-70"}`}>
+        <p style={{ fontSize: "0.8rem", fontWeight: 600, color: isPositive === undefined ? "var(--foreground-muted)" : isPositive ? "#22c55e" : "#ef4444" }}>
           {sub}
         </p>
       )}
@@ -71,8 +61,8 @@ export function MarketStats() {
 
   if (error) {
     return (
-      <div className="card-zeus p-4">
-        <p className="text-sm font-bold text-destructive">Failed to load market data</p>
+      <div className="card-glass p-4">
+        <p style={{ fontSize: "0.875rem", color: "#ef4444" }}>Failed to load market data</p>
       </div>
     )
   }
@@ -81,7 +71,7 @@ export function MarketStats() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="p-5 rounded-2xl" style={{ background: "#fff", border: "3px solid #000", boxShadow: "5px 5px 0 #000" }}>
+          <div key={i} className="card-glass p-5" style={{ minHeight: "110px" }}>
             <div className="skeleton h-3 w-20 mb-3" />
             <div className="skeleton h-7 w-28 mb-2" />
             <div className="skeleton h-3 w-16" />
@@ -92,31 +82,31 @@ export function MarketStats() {
   }
 
   const isPositive = priceData.priceChange24h >= 0
-  const priceChangeText = `${isPositive ? "+" : ""}${formatPercentage(priceData.priceChange24h)} 24h`
+  const priceChangeText = formatPercentage(priceData.priceChange24h) + " 24h"
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <StatCard
-        variant="yellow"
+        accent="yellow"
         label="Price (USD)"
         value={formatPrice(priceData.priceUsd)}
         sub={priceChangeText}
-        subColor={isPositive ? "text-green-700" : "text-red-600"}
+        isPositive={isPositive}
       />
       <StatCard
-        variant="blue"
+        accent="blue"
         label="Price (ETH)"
         value={priceData.priceEth.toFixed(8)}
-        sub="ETH"
+        sub="ETH pair"
       />
       <StatCard
-        variant="white"
+        accent="default"
         label="Market Cap"
         value={formatCurrency(priceData.marketCapUsd)}
         sub={`FDV: ${formatCurrency(priceData.fullyDilutedValuation)}`}
       />
       <StatCard
-        variant="green"
+        accent="green"
         label="24h Volume"
         value={formatCurrency(priceData.volume24h)}
         sub={`Updated: ${new Date(priceData.lastUpdated).toLocaleTimeString()}`}

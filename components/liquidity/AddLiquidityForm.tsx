@@ -280,8 +280,8 @@ export function AddLiquidityForm() {
           <button
             onClick={handleApprove}
             disabled={!isFormValid || isApproving}
-            className="btn-zeus w-full py-4"
-            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.2rem" }}
+            className="btn-primary w-full py-4"
+            style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}
           >
             {isApproving ? "Approving ZEUS..." : "Approve ZEUS"}
           </button>
@@ -289,8 +289,8 @@ export function AddLiquidityForm() {
           <button
             onClick={handleAddLiquidity}
             disabled={!isFormValid || isAdding}
-            className="btn-zeus w-full py-4"
-            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.2rem" }}
+            className="btn-primary w-full py-4"
+            style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}
           >
             {isAdding ? "Adding Liquidity..." : "Add Liquidity"}
           </button>
