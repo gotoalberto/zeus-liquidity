@@ -9,9 +9,17 @@ import { PriceData, OHLCData } from "@/types"
 
 const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
 
-const headers = {
-  "x-cg-demo-api-key": COINGECKO_API_KEY || "",
+// CoinGecko API key can be passed either as header or query param
+// For demo/free tier, use x-cg-demo-api-key header
+// For pro tier, use x-cg-pro-api-key header
+const headers: Record<string, string> = {
   "Accept": "application/json",
+}
+
+// Add API key header if available
+if (COINGECKO_API_KEY) {
+  // Try pro key first, fallback to demo key
+  headers["x-cg-pro-api-key"] = COINGECKO_API_KEY
 }
 
 // ============================================================================
