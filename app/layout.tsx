@@ -3,6 +3,7 @@ import { Ubuntu, Titan_One } from "next/font/google"
 import "./globals.css"
 import { Web3Provider } from "@/providers/Web3Provider"
 import { Toaster } from "sonner"
+import { SplashScreen } from "@/components/ui/SplashScreen"
 
 const ubuntu = Ubuntu({
   variable: "--font-ubuntu",
@@ -23,10 +24,20 @@ export const metadata: Metadata = {
   description: "Provide liquidity for ZEUS/ETH on Uniswap V4. The god dog earns.",
   keywords: ["ZEUS", "Uniswap V4", "Liquidity", "DeFi", "Ethereum", "Pepe"],
   authors: [{ name: "ZEUS Protocol" }],
+  icons: {
+    icon: [
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
 }
 
 export const viewport = {
-  themeColor: "#E8A117",
+  themeColor: "#4BBFE0",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({
@@ -40,6 +51,7 @@ export default function RootLayout({
         className={`${ubuntu.variable} ${titanOne.variable} font-sans antialiased bg-background text-foreground`}
       >
         <Web3Provider>
+          <SplashScreen />
           {children}
           <Toaster
             position="bottom-right"

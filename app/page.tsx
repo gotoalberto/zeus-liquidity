@@ -176,32 +176,35 @@ export default function Home() {
       </header>
 
       {/* HERO — pepes.dog style */}
-      <section className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden" style={{ minHeight: "80vh" }}>
-        {/* Decorative characters — desktop only, absolute positioned */}
-        <div className="absolute left-0 bottom-0 w-40 md:w-56 z-10 hidden sm:block pointer-events-none">
+      <section
+        className="relative flex flex-col items-center justify-center overflow-hidden"
+        style={{ minHeight: "85vh", paddingBottom: "clamp(120px, 22vw, 280px)" }}
+      >
+        {/* Decorative characters — hidden on mobile to avoid clutter */}
+        <div className="absolute left-0 bottom-0 z-10 hidden sm:block pointer-events-none" style={{ width: "clamp(120px, 14vw, 224px)" }}>
           <Image src="/zeus-outfit-1.png" alt="" width={224} height={224} className="object-contain w-full h-full" />
         </div>
-        <div className="absolute right-0 top-1/4 w-32 md:w-44 z-10 hidden sm:block pointer-events-none">
+        <div className="absolute right-0 top-1/3 z-10 hidden sm:block pointer-events-none" style={{ width: "clamp(100px, 11vw, 176px)" }}>
           <Image src="/zeus-outfit-2.png" alt="" width={176} height={176} className="object-contain w-full h-full" />
         </div>
-        <div className="absolute left-1/4 top-4 w-24 md:w-36 z-10 hidden lg:block pointer-events-none">
+        <div className="absolute left-1/4 top-6 z-10 hidden lg:block pointer-events-none" style={{ width: "clamp(80px, 8vw, 144px)" }}>
           <Image src="/zeus-outfit-3.png" alt="" width={144} height={144} className="object-contain w-full h-full" />
         </div>
-        <div className="absolute right-0 bottom-0 w-32 md:w-44 z-10 hidden sm:block pointer-events-none">
+        <div className="absolute right-0 bottom-0 z-10 hidden sm:block pointer-events-none" style={{ width: "clamp(100px, 11vw, 176px)" }}>
           <Image src="/pepe-defi.png" alt="" width={176} height={176} className="object-contain w-full h-full" />
         </div>
-        <div className="absolute left-0 top-1/4 w-24 md:w-36 z-10 hidden lg:block pointer-events-none">
+        <div className="absolute left-0 top-1/3 z-10 hidden lg:block pointer-events-none" style={{ width: "clamp(80px, 8vw, 144px)" }}>
           <Image src="/pepe-outfit-1.png" alt="" width={144} height={144} className="object-contain w-full h-full" />
         </div>
 
         {/* Central content */}
-        <div className="relative z-20 text-center px-4 flex flex-col items-center">
+        <div className="relative z-20 text-center px-6 flex flex-col items-center">
           <h1 className="hero-title">ZEUS</h1>
           <p
-            className="text-white font-bold mt-1 mb-2"
+            className="text-white font-bold mt-1 mb-3"
             style={{
               fontFamily: "var(--font-titan-one)",
-              fontSize: "clamp(1.2rem, 4vw, 2rem)",
+              fontSize: "clamp(1rem, 4vw, 2rem)",
               WebkitTextStroke: "2px #000",
               textShadow: "3px 3px 0 #000",
             }}
@@ -209,10 +212,10 @@ export default function Home() {
             PEPE'S DOG
           </p>
           <p
-            className="text-white font-bold mb-8 max-w-sm"
+            className="text-white font-bold mb-8"
             style={{
               fontFamily: "var(--font-titan-one)",
-              fontSize: "clamp(0.9rem, 2vw, 1.1rem)",
+              fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)",
               textShadow: "2px 2px 0 #000",
               WebkitTextStroke: "0.5px #000",
             }}
@@ -222,15 +225,18 @@ export default function Home() {
           <a
             href="#addlp"
             className="btn-zeus"
-            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.15rem", padding: "0.8rem 2.5rem" }}
+            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", padding: "0.8rem 2.2rem" }}
           >
             Provide Liquidity
           </a>
         </div>
 
-        {/* Zeus hero center — bottom center, large */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 pointer-events-none" style={{ width: "clamp(180px, 25vw, 320px)" }}>
-          <Image src="/hero-zeus-center.png" alt="Zeus" width={320} height={320} className="object-contain w-full h-full" />
+        {/* Zeus hero center — bottom center, scales with viewport */}
+        <div
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
+          style={{ width: "clamp(140px, 22vw, 300px)" }}
+        >
+          <Image src="/hero-zeus-center.png" alt="Zeus" width={300} height={300} className="object-contain w-full h-full" />
         </div>
       </section>
 
