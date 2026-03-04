@@ -1,14 +1,14 @@
 import type { Metadata } from "next"
-import { Ubuntu, Titan_One } from "next/font/google"
+import { Fredoka, Titan_One } from "next/font/google"
 import "./globals.css"
 import { Web3Provider } from "@/providers/Web3Provider"
 import { Toaster } from "sonner"
 import { SplashScreen } from "@/components/ui/SplashScreen"
 
-const ubuntu = Ubuntu({
-  variable: "--font-ubuntu",
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 })
 
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport = {
-  themeColor: "#4BBFE0",
+  themeColor: "#4394f4",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -48,7 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${ubuntu.variable} ${titanOne.variable} font-sans antialiased bg-background text-foreground`}
+        className={`${fredoka.variable} ${titanOne.variable} antialiased`}
       >
         <Web3Provider>
           <SplashScreen />

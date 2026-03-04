@@ -120,11 +120,11 @@ export function AddLiquidityForm() {
 
   if (!isConnected) {
     return (
-      <div className="p-8 text-center space-y-3">
-        <p style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", color: "var(--foreground)" }}>
+      <div style={{ padding: "3rem", textAlign: "center" }}>
+        <p style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", color: "#000", marginBottom: "0.5rem" }}>
           Connect your wallet to add liquidity
         </p>
-        <p style={{ fontSize: "0.875rem", color: "var(--foreground-muted)" }}>Become a ZEUS LP and earn fees</p>
+        <p style={{ fontSize: "0.875rem", color: "#666", fontWeight: 600 }}>Become a ZEUS LP and earn fees</p>
       </div>
     )
   }
@@ -228,7 +228,7 @@ export function AddLiquidityForm() {
               style={{ background: "#3bff8a", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
             >
               <p className="text-xs uppercase tracking-widest mb-1 font-bold text-black/60">Total Value</p>
-              <p className="text-2xl font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
+              <p className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
                 ${(ethAmountNum * ethPriceUsd + zeusAmountNum * priceData.priceUsd).toFixed(2)}
               </p>
             </div>
@@ -280,8 +280,8 @@ export function AddLiquidityForm() {
           <button
             onClick={handleApprove}
             disabled={!isFormValid || isApproving}
-            className="btn-primary w-full py-4"
-            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem" }}
+            className="btn-zeus w-full py-4"
+            style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}
           >
             {isApproving ? "Approving ZEUS..." : "Approve ZEUS"}
           </button>
@@ -289,8 +289,8 @@ export function AddLiquidityForm() {
           <button
             onClick={handleAddLiquidity}
             disabled={!isFormValid || isAdding}
-            className="btn-primary w-full py-4"
-            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem" }}
+            className="btn-zeus w-full py-4"
+            style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}
           >
             {isAdding ? "Adding Liquidity..." : "Add Liquidity"}
           </button>

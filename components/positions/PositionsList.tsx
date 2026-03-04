@@ -11,10 +11,10 @@ function formatCurrency(value: number): string {
 }
 
 const emptyState = (text: string, sub?: string) => (
-  <div className="card-glass p-8 text-center">
+  <div className="card-zeus p-8 text-center">
     <div style={{ maxWidth: 400, margin: "0 auto" }}>
-      <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--foreground)", marginBottom: "0.5rem" }}>{text}</p>
-      {sub && <p style={{ fontSize: "0.875rem", color: "var(--foreground-muted)" }}>{sub}</p>}
+      <p style={{ fontSize: "1rem", fontWeight: 600, color: "#000", marginBottom: "0.5rem" }}>{text}</p>
+      {sub && <p style={{ fontSize: "0.875rem", color: "#666" }}>{sub}</p>}
     </div>
   </div>
 )
@@ -29,7 +29,7 @@ export function PositionsList() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <div className="card-glass p-6">
+        <div className="card-zeus p-6">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem" }}>
             {[1, 2, 3].map((i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -40,7 +40,7 @@ export function PositionsList() {
           </div>
         </div>
         {[1, 2].map((i) => (
-          <div key={i} className="card-glass p-6" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div key={i} className="card-zeus p-6" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <div className="skeleton h-5 w-48" />
             <div className="skeleton h-20 w-full" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
@@ -60,16 +60,16 @@ export function PositionsList() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       {/* Portfolio Summary */}
-      <div className="card-glass p-6" style={{ position: "sticky", top: 80, zIndex: 10 }}>
+      <div className="card-zeus p-6" style={{ position: "sticky", top: 80, zIndex: 10 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(1, 1fr)", gap: "1.5rem" }} className="md:grid-cols-3">
           {[
-            { label: "Total Portfolio Value", value: formatCurrency(totalValueUsd), color: "var(--foreground)" },
+            { label: "Total Portfolio Value", value: formatCurrency(totalValueUsd), color: "#000" },
             { label: "Uncollected Fees", value: formatCurrency(totalFeesUsd), color: "#22c55e" },
             { label: "Active Positions", value: String(positionCount), color: "#4394f4" },
           ].map(({ label, value, color }) => (
             <div key={label}>
-              <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)", marginBottom: "0.3rem" }}>{label}</p>
-              <p style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.75rem", color, letterSpacing: "0.01em" }}>{value}</p>
+              <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#666", marginBottom: "0.3rem" }}>{label}</p>
+              <p style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", color, letterSpacing: "0.01em" }}>{value}</p>
             </div>
           ))}
         </div>
