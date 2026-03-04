@@ -120,11 +120,11 @@ export function AddLiquidityForm() {
 
   if (!isConnected) {
     return (
-      <div className="p-8 text-center space-y-4">
-        <p className="font-bold text-lg text-gray-700" style={{ fontFamily: "var(--font-titan-one)" }}>
+      <div className="p-8 text-center space-y-3">
+        <p style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", color: "var(--foreground)" }}>
           Connect your wallet to add liquidity
         </p>
-        <p className="text-sm font-bold text-gray-500">Become a ZEUS LP and earn fees</p>
+        <p style={{ fontSize: "0.875rem", color: "var(--foreground-muted)" }}>Become a ZEUS LP and earn fees</p>
       </div>
     )
   }

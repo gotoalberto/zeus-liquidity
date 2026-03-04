@@ -54,6 +54,15 @@ export function PriceChart() {
         visible: true,
         scaleMargins: { top: 0.1, bottom: 0.1 },
         mode: 0,
+        minimumWidth: 80,
+      },
+      localization: {
+        priceFormatter: (price: number) => {
+          if (price < 0.000001) return price.toExponential(2)
+          if (price < 0.0001) return price.toFixed(8)
+          if (price < 0.01) return price.toFixed(6)
+          return price.toFixed(4)
+        },
       },
       crosshair: {
         vertLine: { color: "rgba(255,230,0,0.3)", width: 1, style: 3 },
@@ -156,7 +165,7 @@ export function PriceChart() {
       </div>
 
       {/* Chart Container */}
-      <div style={{ position: "relative", width: "100%", height: 400, borderRadius: "0.75rem", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div style={{ position: "relative", width: "100%", height: 400, borderRadius: "0.75rem", overflow: "visible", border: "1px solid rgba(255,255,255,0.08)" }}>
         {isLoading && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(13,17,23,0.7)", backdropFilter: "blur(4px)", zIndex: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "rgba(255,255,255,0.5)", fontSize: "0.875rem" }}>

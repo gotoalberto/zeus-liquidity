@@ -10,6 +10,8 @@ function formatCurrency(value: number): string {
 }
 
 function formatPrice(value: number): string {
+  if (value < 0.000001) return `$${value.toExponential(3)}`
+  if (value < 0.0001) return `$${value.toFixed(9)}`
   if (value < 0.01) return `$${value.toFixed(6)}`
   return `$${value.toFixed(4)}`
 }
@@ -96,7 +98,7 @@ export function MarketStats() {
       <StatCard
         accent="blue"
         label="Price (ETH)"
-        value={priceData.priceEth.toFixed(8)}
+        value={priceData.priceEth < 0.000001 ? priceData.priceEth.toExponential(3) : priceData.priceEth.toFixed(10)}
         sub="ETH pair"
       />
       <StatCard
