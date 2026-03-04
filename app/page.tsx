@@ -13,6 +13,7 @@
 import { PriceChart } from "@/components/liquidity/PriceChart"
 import { MarketStats } from "@/components/ui/MarketStats"
 import { PositionsList } from "@/components/positions/PositionsList"
+import { AddLiquidityForm } from "@/components/liquidity/AddLiquidityForm"
 import { useAppKit } from "@reown/appkit/react"
 import { useAccount } from "wagmi"
 
@@ -67,13 +68,11 @@ export default function Home() {
             <PositionsList />
           </section>
 
-          {/* Add Liquidity Placeholder */}
+          {/* Add Liquidity Form */}
           <section>
             <h2 className="text-lg font-semibold mb-4">Add Liquidity</h2>
-            <div className="bg-card rounded-lg border border-border p-8 text-center">
-              <p className="text-muted-foreground">
-                Add liquidity form coming in Step 6
-              </p>
+            <div className="bg-card rounded-lg border border-border p-6">
+              <AddLiquidityForm />
             </div>
           </section>
         </div>

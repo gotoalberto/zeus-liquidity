@@ -1,7 +1,7 @@
 # Zeus Liquidity Manager — Build Context
 
 ## Current Status
-**STEP 5 of 8: COMPLETE** — Moving to Step 6
+**STEP 6 of 8: COMPLETE** — Moving to Step 7
 
 ## What's Built
 - ✅ **Step 1**: Next.js 14 project initialized with TypeScript, Tailwind CSS, App Router
@@ -27,13 +27,31 @@
 - ✅ **Step 5**: `components/positions/PositionCard.tsx` — Individual position display with MCAP range, status badge, token amounts, uncollected fees
 - ✅ **Step 5**: `components/positions/PositionsList.tsx` — Full positions list with portfolio summary and empty/loading/error states
 - ✅ **Step 5**: Updated `app/page.tsx` — Integrated wallet connection button (AppKit) and positions display
-- ✅ **Step 5**: Build verification successful
+- ✅ **Step 6**: `components/liquidity/RangeSelector.tsx` — MCAP-based range selector (KEY FEATURE)
+  - Min/Max MCAP inputs with USD display
+  - Preset buttons: Conservative (80%-300%), Moderate (50%-1000%), Aggressive (20%-5000%)
+  - Real-time conversion to ticks and prices
+  - Shows current market cap
+  - Warns if price is outside selected range
+  - Collapsible advanced details (tick range, ETH price)
+- ✅ **Step 6**: `components/liquidity/AddLiquidityForm.tsx` — Complete add liquidity form
+  - Integrates RangeSelector component
+  - ETH and ZEUS amount inputs with balance display
+  - Auto-calculation of amounts based on 50/50 value split
+  - MAX buttons for convenience
+  - Slippage tolerance selector (0.1%, 0.5%, 1%, custom)
+  - Two-step flow: Approve ZEUS → Add Liquidity
+  - USD value preview
+  - Form validation and error messages
+  - Placeholder for V4 mint integration (Step 7)
+- ✅ **Step 6**: Updated `app/page.tsx` — Added AddLiquidityForm to UI
+- ✅ **Step 6**: Build verification successful
 
 ## What's Next
-- **Step 6**: MCAP-based range selector UI component
-- **Step 6**: Add liquidity form with token inputs
-- **Step 6**: Uniswap V4 PositionManager.mint() integration
-- **Step 6**: Token approval flow (ZEUS ERC20)
+- **Step 7**: Implement actual Uniswap V4 PositionManager.mint() transaction
+- **Step 7**: ZEUS token approval transaction (ERC20.approve)
+- **Step 7**: Close position functionality (decreaseLiquidity + collect)
+- **Step 7**: Collect fees functionality
 
 ## Critical Constants
 - ZEUS address: 0x0f7dC5D02CC1E1f5Ee47854d534D332A1081cCC8
