@@ -1,44 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Titan+One&family=Ubuntu:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 /**
  * ZEUS Liquidity Manager — Global Styles
  *
- * Theme: Olympus meets the Swamp — memecoin DeFi dark
- * - Background: deep dark navy/purple
- * - Cards: glassmorphism with golden borders
- * - Accent: #E8A117 (ZEUS gold)
- * - Secondary: #3BFF8A (swamp green)
+ * Theme: zeuscoin.vip inspired — bright sky blue, comic/cartoon memecoin style
+ * - Background: sky blue #4394f4 with halftone dot texture
+ * - Cards: white with thick black offset shadow
+ * - CTA buttons: yellow #f0e64e with black border/shadow
+ * - Section titles: comic-book bold with gradient fill and black stroke
  */
 
 :root {
-  /* Colors */
-  --background: #080A12;
-  --foreground: #F0F0FF;
-  --card: #0F1020;
-  --card-foreground: #F0F0FF;
-  --border: #2A2D4A;
-  --border-glow: #E8A11740;
-  --input: #141628;
-  --primary: #E8A117;
-  --primary-foreground: #080A12;
-  --secondary: #3BFF8A;
-  --secondary-foreground: #080A12;
-  --muted: #1A1D30;
-  --muted-foreground: #8890B0;
-  --accent: #E8A117;
-  --accent-foreground: #080A12;
-  --destructive: #FF4560;
-  --destructive-foreground: #FFFFFF;
-  --success: #3BFF8A;
-  --success-foreground: #080A12;
-  --warning: #FFB800;
-  --warning-foreground: #080A12;
+  --background: #4394f4;
+  --background-light: #8dc6fa;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --border: #000000;
+  --input: #ffffff;
+  --primary: #f0e64e;
+  --primary-foreground: #000000;
+  --secondary: #3bff8a;
+  --secondary-foreground: #000000;
+  --muted: #c8e0f8;
+  --muted-foreground: #1a5a9a;
+  --accent: #f0e64e;
+  --accent-foreground: #000000;
+  --destructive: #ff3333;
+  --destructive-foreground: #ffffff;
+  --success: #3bff8a;
+  --success-foreground: #000000;
+  --warning: #ff8800;
+  --warning-foreground: #000000;
 
-  /* Fonts */
-  --font-sans: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --font-display: 'Bangers', cursive;
+  --font-sans: 'Ubuntu', sans-serif;
+  --font-mono: 'Ubuntu Mono', monospace;
+  --font-display: 'Titan One', cursive;
 }
 
 @theme inline {
@@ -67,7 +65,6 @@
 }
 
 * {
-  border-color: var(--border);
   box-sizing: border-box;
 }
 
@@ -76,290 +73,252 @@ html {
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(232,161,23,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(59,255,138,0.06) 0%, transparent 50%),
-    url('/bg-texture.png');
-  background-size: 100% auto, 100% auto, cover;
-  background-attachment: fixed;
-  background-position: top center, bottom right, center;
+  min-height: 100vh;
+  /* Halftone dot texture like zeuscoin.vip */
+  background-image: radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--background); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #8dc6fa; }
+::-webkit-scrollbar-thumb { background: #1a6fd4; border-radius: 4px; border: 2px solid #000; }
+::-webkit-scrollbar-thumb:hover { background: #f0e64e; }
 
-/* Transitions */
-* {
-  transition-duration: 200ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Focus */
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 3px solid #f0e64e;
   outline-offset: 2px;
 }
 
 /* ============================================================
-   TYPOGRAPHY
-   ============================================================ */
-
-.font-display {
-  font-family: var(--font-display);
-  letter-spacing: 0.05em;
-}
-
-.font-mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-}
-
-/* ============================================================
-   GRADIENT TEXT
-   ============================================================ */
-
-.gradient-text {
-  background: linear-gradient(135deg, #E8A117 0%, #FFD95A 50%, #E8A117 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  background-size: 200% auto;
-  animation: gradient-shift 4s ease infinite;
-}
-
-.gradient-text-green {
-  background: linear-gradient(135deg, #3BFF8A 0%, #00D4FF 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* ============================================================
-   CARDS
+   CARDS — white, heavily rounded, solid black offset shadow
    ============================================================ */
 
 .card-zeus {
-  background: linear-gradient(135deg, rgba(15,16,32,0.95) 0%, rgba(10,12,24,0.98) 100%);
-  border: 1px solid rgba(232,161,23,0.25);
-  border-radius: 16px;
-  box-shadow:
-    0 0 0 1px rgba(232,161,23,0.08),
-    0 4px 24px rgba(0,0,0,0.6),
-    inset 0 1px 0 rgba(232,161,23,0.12);
-  backdrop-filter: blur(12px);
+  background: #ffffff;
+  border: 3px solid #000000;
+  border-radius: 1.75rem;
+  box-shadow: 6px 6px 0px 0px #000000;
   position: relative;
   overflow: hidden;
-}
-
-.card-zeus::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(232,161,23,0.5), transparent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .card-zeus:hover {
-  border-color: rgba(232,161,23,0.45);
-  box-shadow:
-    0 0 0 1px rgba(232,161,23,0.15),
-    0 8px 32px rgba(0,0,0,0.7),
-    0 0 24px rgba(232,161,23,0.08),
-    inset 0 1px 0 rgba(232,161,23,0.2);
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0px 0px #000000;
 }
 
-.card-glass {
-  background: linear-gradient(135deg, rgba(15,16,32,0.8) 0%, rgba(10,12,24,0.85) 100%);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
+.card-blue {
+  background: #2d7fd4;
+  border: 3px solid #000000;
+  border-radius: 1.75rem;
+  box-shadow: 6px 6px 0px 0px #000000;
+  color: #ffffff;
+}
+
+.card-yellow {
+  background: #f0e64e;
+  border: 3px solid #000000;
+  border-radius: 1.75rem;
+  box-shadow: 6px 6px 0px 0px #000000;
+  color: #000000;
+}
+
+.card-green {
+  background: #3bff8a;
+  border: 3px solid #000000;
+  border-radius: 1.75rem;
+  box-shadow: 6px 6px 0px 0px #000000;
+  color: #000000;
 }
 
 /* ============================================================
-   BUTTONS
+   BUTTONS — zeuscoin.vip style with yellow + black border/shadow
    ============================================================ */
 
 .btn-zeus {
-  background: linear-gradient(135deg, #E8A117 0%, #FFB830 50%, #E8A117 100%);
-  background-size: 200% auto;
-  color: #080A12;
+  background-color: #f0e64e;
+  border: 3px solid #000000;
+  border-radius: 2.5rem;
+  color: #000000;
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  letter-spacing: 0.1em;
-  border: none;
-  border-radius: 10px;
-  padding: 12px 28px;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  padding: 0.7rem 1.8rem;
   cursor: pointer;
-  box-shadow:
-    0 0 20px rgba(232,161,23,0.3),
-    0 4px 12px rgba(0,0,0,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.2);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-zeus::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity 0.2s;
+  box-shadow: 4px 4px 0px 0px #000000;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  min-height: 2.8rem;
 }
 
 .btn-zeus:hover {
-  background-position: right center;
-  box-shadow:
-    0 0 30px rgba(232,161,23,0.5),
-    0 6px 20px rgba(0,0,0,0.5),
-    inset 0 1px 0 rgba(255,255,255,0.3);
-  transform: translateY(-1px);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px #000000;
 }
 
-.btn-zeus:hover::after { opacity: 1; }
-.btn-zeus:active { transform: translateY(0); }
-.btn-zeus:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-zeus:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px #000000;
+}
+
+.btn-zeus:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+.btn-blue {
+  background-color: #1a6fd4;
+  border: 3px solid #000000;
+  border-radius: 2.5rem;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: 0.6rem 1.5rem;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px 0px #000000;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.8rem;
+}
+
+.btn-blue:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px #000000;
+}
+
+.btn-blue:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px #000000;
+}
 
 /* ============================================================
    STATUS BADGES
    ============================================================ */
 
 .badge-inrange {
-  background: rgba(59,255,138,0.1);
-  color: #3BFF8A;
-  border: 1px solid rgba(59,255,138,0.3);
-  border-radius: 6px;
-  padding: 2px 8px;
+  background: #3bff8a;
+  color: #000;
+  border: 2px solid #000000;
+  border-radius: 2rem;
+  padding: 3px 12px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 2px 2px 0px #000;
 }
 
 .badge-outrange {
-  background: rgba(255,184,0,0.1);
-  color: #FFB800;
-  border: 1px solid rgba(255,184,0,0.3);
-  border-radius: 6px;
-  padding: 2px 8px;
+  background: #ff8800;
+  color: #000;
+  border: 2px solid #000000;
+  border-radius: 2rem;
+  padding: 3px 12px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 2px 2px 0px #000;
 }
 
 .badge-closed {
-  background: rgba(136,144,176,0.1);
-  color: #8890B0;
-  border: 1px solid rgba(136,144,176,0.2);
-  border-radius: 6px;
-  padding: 2px 8px;
+  background: #c8e0f8;
+  color: #1a5a9a;
+  border: 2px solid #000000;
+  border-radius: 2rem;
+  padding: 3px 12px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 2px 2px 0px #000;
 }
 
 /* ============================================================
-   GLOW EFFECTS
+   SECTION TITLES — comic-book style like zeuscoin.vip
    ============================================================ */
 
-.glow-gold {
-  box-shadow: 0 0 20px rgba(232,161,23,0.4), 0 0 40px rgba(232,161,23,0.15);
-}
-
-.glow-green {
-  box-shadow: 0 0 20px rgba(59,255,138,0.4), 0 0 40px rgba(59,255,138,0.15);
-}
-
-.text-glow-gold {
-  text-shadow: 0 0 20px rgba(232,161,23,0.6), 0 0 40px rgba(232,161,23,0.3);
+.section-title {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  letter-spacing: 0.02em;
+  /* Yellow/orange gradient fill with thick black stroke */
+  color: #f0e64e;
+  -webkit-text-stroke: 3px #000000;
+  text-shadow:
+    4px 4px 0px #000000,
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* ============================================================
-   DECORATIVE
+   TICKER / MARQUEE — yellow tape like zeuscoin.vip
+   ============================================================ */
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+/* ============================================================
+   DIVIDER
    ============================================================ */
 
 .divider-zeus {
   border: none;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(232,161,23,0.4), transparent);
+  height: 3px;
+  background: #000000;
   margin: 24px 0;
-}
-
-.lightning-border {
-  position: relative;
-}
-.lightning-border::before {
-  content: '⚡';
-  position: absolute;
-  left: -20px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--primary);
-  font-size: 14px;
+  border-radius: 2px;
 }
 
 /* ============================================================
-   ANIMATIONS
-   ============================================================ */
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(232,161,23,0.3); }
-  50% { box-shadow: 0 0 25px rgba(232,161,23,0.6), 0 0 50px rgba(232,161,23,0.2); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-.animate-float { animation: float 3s ease-in-out infinite; }
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
-
-.skeleton {
-  background: linear-gradient(90deg, var(--muted) 25%, rgba(42,45,74,0.8) 50%, var(--muted) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 6px;
-}
-
-/* ============================================================
-   INPUTS
+   INPUTS — white with thick black border/shadow
    ============================================================ */
 
 .input-zeus {
-  background: var(--input);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--foreground);
-  font-family: var(--font-mono);
+  background: #ffffff;
+  border: 3px solid #000000;
+  border-radius: 1rem;
+  color: #000000;
+  font-family: var(--font-sans);
+  font-weight: 600;
   padding: 12px 16px;
   width: 100%;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: box-shadow 0.1s ease;
+  box-shadow: 3px 3px 0px 0px #000000;
 }
 
 .input-zeus:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(232,161,23,0.15), 0 0 10px rgba(232,161,23,0.1);
+  box-shadow: 5px 5px 0px 0px #000000;
 }
 
 .input-zeus.error {
-  border-color: var(--destructive);
+  border-color: #ff3333;
+  box-shadow: 3px 3px 0px 0px #ff3333;
+}
+
+.input-zeus::placeholder {
+  color: #8dc6fa;
+  font-weight: 400;
 }
 
 /* ============================================================
@@ -367,28 +326,69 @@ body {
    ============================================================ */
 
 .header-zeus {
-  background: linear-gradient(180deg, rgba(8,10,18,0.95) 0%, rgba(8,10,18,0.85) 100%);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(232,161,23,0.2);
-  box-shadow: 0 4px 30px rgba(0,0,0,0.5), 0 1px 0 rgba(232,161,23,0.1);
+  background: rgba(67, 148, 244, 0.15);
+  backdrop-filter: blur(2rem);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.12);
 }
 
 /* ============================================================
-   SECTION TITLES
+   ANIMATIONS
    ============================================================ */
 
-.section-title {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  letter-spacing: 0.08em;
-  color: var(--primary);
-  text-shadow: 0 0 20px rgba(232,161,23,0.4);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
 }
 
-.section-title::before {
-  content: '⚡';
-  font-size: 1.2rem;
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-float { animation: float 3.5s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 8s linear infinite; }
+
+.skeleton {
+  background: linear-gradient(90deg, #c8e0f8 25%, #8dc6fa 50%, #c8e0f8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* ============================================================
+   DECORATIVE LIGHTNING BOLT (zeuscoin.vip style)
+   ============================================================ */
+
+.deco-lightning {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   CA COPY BOX
+   ============================================================ */
+
+.ca-box {
+  background: #ffffff;
+  border: 2px solid #000;
+  border-radius: 1rem;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.8rem;
+  box-shadow: 3px 3px 0 #000;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.ca-box:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #000;
 }

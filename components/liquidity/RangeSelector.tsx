@@ -5,14 +5,6 @@
  *
  * MCAP-based range selector - THE KEY DIFFERENTIATING FEATURE
  * Users define liquidity ranges by market cap milestones, not raw prices
- *
- * Features:
- * - Min/Max MCAP inputs (USD)
- * - Preset buttons (Conservative / Moderate / Aggressive)
- * - Displays equivalent prices in ETH and USD
- * - Shows tick values in collapsible "Advanced" section
- * - Validates range (tickLower < tickUpper)
- * - Shows warning if current price is outside range
  */
 
 import { useState, useEffect } from "react"
@@ -26,15 +18,9 @@ interface RangeSelectorProps {
 }
 
 function formatCurrency(value: number): string {
-  if (value >= 1_000_000_000) {
-    return `$${(value / 1_000_000_000).toFixed(2)}B`
-  }
-  if (value >= 1_000_000) {
-    return `$${(value / 1_000_000).toFixed(2)}M`
-  }
-  if (value >= 1_000) {
-    return `$${(value / 1_000).toFixed(2)}K`
-  }
+  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`
   return `$${value.toFixed(2)}`
 }
 
@@ -46,7 +32,6 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
   const [maxMcap, setMaxMcap] = useState<string>("")
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  // Calculate range whenever inputs change
   useEffect(() => {
     if (!priceData || !ethPriceUsd || !minMcap || !maxMcap) return
 
@@ -54,9 +39,7 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
       const minMcapNum = parseFloat(minMcap)
       const maxMcapNum = parseFloat(maxMcap)
 
-      if (minMcapNum <= 0 || maxMcapNum <= 0 || minMcapNum >= maxMcapNum) {
-        return
-      }
+      if (minMcapNum <= 0 || maxMcapNum <= 0 || minMcapNum >= maxMcapNum) return
 
       const minTick = mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)
       const maxTick = mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)
@@ -87,22 +70,18 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
     const { minMultiplier, maxMultiplier } = MCAP_RANGE_PRESETS[preset]
     const currentMcap = priceData.marketCapUsd
 
-    const range = getPresetRange(
-      currentMcap,
-      minMultiplier,
-      maxMultiplier,
-      ethPriceUsd,
-      priceData.totalSupply
-    )
-
+    const range = getPresetRange(currentMcap, minMultiplier, maxMultiplier, ethPriceUsd, priceData.totalSupply)
     setMinMcap(range.minMcap.toString())
     setMaxMcap(range.maxMcap.toString())
   }
 
   if (!priceData || !ethPriceUsd) {
     return (
-      <div className="card-zeus p-6">
-        <p className="text-muted-foreground">Loading market data...</p>
+      <div
+        className="p-5 rounded-2xl"
+        style={{ background: "#d4e8ff", border: "2px solid #000" }}
+      >
+        <p className="font-bold text-gray-600">Loading market data...</p>
       </div>
     )
   }
@@ -110,20 +89,24 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
   const currentMcap = priceData.marketCapUsd
   const minMcapNum = parseFloat(minMcap) || 0
   const maxMcapNum = parseFloat(maxMcap) || 0
-  const isOutOfRange =
-    minMcapNum > 0 && maxMcapNum > 0 && (currentMcap < minMcapNum || currentMcap > maxMcapNum)
+  const isOutOfRange = minMcapNum > 0 && maxMcapNum > 0 && (currentMcap < minMcapNum || currentMcap > maxMcapNum)
 
   return (
     <div className="space-y-6">
       {/* Current Market Cap */}
-      <div className="bg-primary/8 border border-primary/25 rounded-xl p-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 font-semibold">Current Market Cap</p>
-        <p className="text-2xl font-bold font-mono text-primary">{formatCurrency(currentMcap)}</p>
+      <div
+        className="rounded-xl p-4"
+        style={{ background: "#f0e64e", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
+      >
+        <p className="text-xs uppercase tracking-widest mb-1 font-bold text-black/60">Current Market Cap</p>
+        <p className="text-2xl font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
+          {formatCurrency(currentMcap)}
+        </p>
       </div>
 
       {/* Preset Buttons */}
       <div>
-        <p className="text-sm text-muted-foreground mb-3 font-semibold uppercase tracking-widest text-xs">Presets</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-3">Presets</p>
         <div className="grid grid-cols-3 gap-2">
           {[
             { key: "conservative" as const, label: "Conservative", range: "80% – 300%" },
@@ -133,10 +116,15 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
             <button
               key={key}
               onClick={() => applyPreset(key)}
-              className="px-3 py-3 bg-muted/30 border border-border rounded-xl text-sm font-semibold hover:border-primary/50 hover:bg-primary/8 transition-all text-center"
+              className="px-3 py-3 rounded-xl text-sm font-bold text-center transition-all hover:-translate-y-0.5"
+              style={{
+                background: "#d4e8ff",
+                border: "2px solid #000",
+                boxShadow: "3px 3px 0 #000",
+              }}
             >
               {label}
-              <span className="block text-xs text-muted-foreground mt-1 font-mono">{range}</span>
+              <span className="block text-xs font-mono text-gray-600 mt-1">{range}</span>
             </button>
           ))}
         </div>
@@ -145,7 +133,7 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
       {/* MCAP Inputs */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Min Market Cap (USD)</label>
+          <label className="text-xs font-bold uppercase tracking-widest text-gray-600">Min Market Cap (USD)</label>
           <input
             type="number"
             value={minMcap}
@@ -154,14 +142,14 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
             className="input-zeus"
           />
           {minMcapNum > 0 && (
-            <p className="text-xs text-muted-foreground font-mono">
-              ≈ {formatCurrency(minMcapNum)}
+            <p className="text-xs font-bold text-gray-500 font-mono">
+              {formatCurrency(minMcapNum)}
             </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Max Market Cap (USD)</label>
+          <label className="text-xs font-bold uppercase tracking-widest text-gray-600">Max Market Cap (USD)</label>
           <input
             type="number"
             value={maxMcap}
@@ -170,8 +158,8 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
             className="input-zeus"
           />
           {maxMcapNum > 0 && (
-            <p className="text-xs text-muted-foreground font-mono">
-              ≈ {formatCurrency(maxMcapNum)}
+            <p className="text-xs font-bold text-gray-500 font-mono">
+              {formatCurrency(maxMcapNum)}
             </p>
           )}
         </div>
@@ -179,15 +167,21 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
 
       {/* Validation Warning */}
       {minMcapNum > 0 && maxMcapNum > 0 && minMcapNum >= maxMcapNum && (
-        <div className="bg-destructive/10 border border-destructive/25 rounded-xl p-3 text-sm text-destructive">
-          ✗ Min market cap must be less than max market cap
+        <div
+          className="rounded-xl p-3 text-sm font-bold"
+          style={{ background: "#ffeeee", border: "2px solid #ff4444", color: "#ff4444" }}
+        >
+          Min market cap must be less than max market cap
         </div>
       )}
 
       {/* Out of Range Warning */}
       {isOutOfRange && (
-        <div className="bg-warning/10 border border-warning/25 rounded-xl p-3 text-sm text-warning">
-          ⚠ Current price is outside your selected range. Price must move into range to earn fees.
+        <div
+          className="rounded-xl p-3 text-sm font-bold"
+          style={{ background: "#fff3cc", border: "2px solid #ff8800", color: "#885500" }}
+        >
+          Current price is outside your selected range. Price must move into range to earn fees.
         </div>
       )}
 
@@ -195,7 +189,7 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
       {minMcapNum > 0 && maxMcapNum > 0 && minMcapNum < maxMcapNum && (
         <details className="group" open={showAdvanced}>
           <summary
-            className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-primary transition-colors list-none flex items-center gap-2 select-none"
+            className="cursor-pointer text-sm font-bold text-gray-500 hover:text-black transition-colors list-none flex items-center gap-2 select-none"
             onClick={(e) => {
               e.preventDefault()
               setShowAdvanced(!showAdvanced)
@@ -204,24 +198,23 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
             <span className={`transition-transform inline-block ${showAdvanced ? "rotate-90" : ""}`}>▶</span>
             Advanced Details
           </summary>
-          <div className="mt-3 space-y-2 text-sm bg-muted/20 rounded-xl p-4 border border-border/40">
+          <div
+            className="mt-3 space-y-2 text-sm rounded-xl p-4"
+            style={{ background: "#d4e8ff", border: "2px solid #000" }}
+          >
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Tick Range:</span>
-              <span className="font-mono text-xs">
+              <span className="font-bold text-gray-600">Tick Range:</span>
+              <span className="font-mono text-xs font-bold">
                 {mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)} –{" "}
                 {mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Price Range (ETH):</span>
-              <span className="font-mono text-xs">
-                {tickToZeusEthPrice(
-                  mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)
-                ).toFixed(8)}{" "}
+              <span className="font-bold text-gray-600">Price Range (ETH):</span>
+              <span className="font-mono text-xs font-bold">
+                {tickToZeusEthPrice(mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)).toFixed(8)}{" "}
                 –{" "}
-                {tickToZeusEthPrice(
-                  mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)
-                ).toFixed(8)}
+                {tickToZeusEthPrice(mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)).toFixed(8)}
               </span>
             </div>
           </div>

@@ -121,9 +121,10 @@ export function AddLiquidityForm() {
   if (!isConnected) {
     return (
       <div className="p-8 text-center space-y-4">
-        <div className="text-4xl">⚡</div>
-        <p className="text-muted-foreground font-semibold">Connect your wallet to add liquidity</p>
-        <p className="text-xs text-muted-foreground/60">Become a ZEUS LP and earn fees</p>
+        <p className="font-bold text-lg text-gray-700" style={{ fontFamily: "var(--font-titan-one)" }}>
+          Connect your wallet to add liquidity
+        </p>
+        <p className="text-sm font-bold text-gray-500">Become a ZEUS LP and earn fees</p>
       </div>
     )
   }
@@ -148,8 +149,8 @@ export function AddLiquidityForm() {
     <div className="space-y-8">
       {/* Range Selector */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-          ⚡ Select Range
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-4">
+          Select Range
         </h3>
         <RangeSelector onRangeChange={setSelectedRange} />
       </div>
@@ -158,8 +159,8 @@ export function AddLiquidityForm() {
 
       {/* Amount Inputs */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-          ⚡ Deposit Amounts
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-4">
+          Deposit Amounts
         </h3>
         <div className="space-y-4">
           {/* ETH Input */}
@@ -187,14 +188,14 @@ export function AddLiquidityForm() {
               </button>
             </div>
             {hasInsufficientEth && (
-              <p className="text-xs text-destructive">✗ Insufficient ETH balance</p>
+              <p className="text-xs text-destructive">Insufficient ETH balance</p>
             )}
           </div>
 
           {/* ZEUS Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold">⚡ ZEUS Amount</label>
+              <label className="text-sm font-semibold">ZEUS Amount</label>
               <span className="text-xs text-muted-foreground font-mono">
                 Balance: {zeusBalanceNum.toFixed(4)} ZEUS
               </span>
@@ -216,15 +217,18 @@ export function AddLiquidityForm() {
               </button>
             </div>
             {hasInsufficientZeus && (
-              <p className="text-xs text-destructive">✗ Insufficient ZEUS balance</p>
+              <p className="text-xs text-destructive">Insufficient ZEUS balance</p>
             )}
           </div>
 
           {/* Estimated USD Value */}
           {ethAmountNum > 0 && zeusAmountNum > 0 && priceData && ethPriceUsd && (
-            <div className="bg-primary/8 border border-primary/25 rounded-xl p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 font-semibold">Total Value</p>
-              <p className="text-2xl font-bold font-mono text-primary">
+            <div
+              className="rounded-xl p-4"
+              style={{ background: "#3bff8a", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
+            >
+              <p className="text-xs uppercase tracking-widest mb-1 font-bold text-black/60">Total Value</p>
+              <p className="text-2xl font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
                 ${(ethAmountNum * ethPriceUsd + zeusAmountNum * priceData.priceUsd).toFixed(2)}
               </p>
             </div>
@@ -236,7 +240,7 @@ export function AddLiquidityForm() {
 
       {/* Slippage Tolerance */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">
           Slippage Tolerance
         </h3>
         <div className="flex gap-2 flex-wrap">
@@ -247,11 +251,11 @@ export function AddLiquidityForm() {
                 setSlippage(value)
                 setCustomSlippage("")
               }}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                slippage === value && !customSlippage
-                  ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(232,161,23,0.3)]"
-                  : "bg-muted/30 border border-border hover:border-primary/50"
-              }`}
+              className="px-4 py-2 rounded-2xl text-sm font-bold transition-all"
+              style={slippage === value && !customSlippage
+                ? { background: "#f0e64e", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }
+                : { background: "#d4e8ff", border: "2px solid #000", boxShadow: "2px 2px 0 #000" }
+              }
             >
               {value}%
             </button>
@@ -276,24 +280,24 @@ export function AddLiquidityForm() {
           <button
             onClick={handleApprove}
             disabled={!isFormValid || isApproving}
-            className="btn-zeus w-full py-4 text-base"
-            style={{fontFamily:"var(--font-bangers)", fontSize:"1.2rem", letterSpacing:"0.1em"}}
+            className="btn-zeus w-full py-4"
+            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.2rem" }}
           >
-            {isApproving ? "⏳ APPROVING ZEUS..." : "⚡ APPROVE ZEUS"}
+            {isApproving ? "Approving ZEUS..." : "Approve ZEUS"}
           </button>
         ) : (
           <button
             onClick={handleAddLiquidity}
             disabled={!isFormValid || isAdding}
-            className="btn-zeus w-full py-4 text-base"
-            style={{fontFamily:"var(--font-bangers)", fontSize:"1.2rem", letterSpacing:"0.1em"}}
+            className="btn-zeus w-full py-4"
+            style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.2rem" }}
           >
-            {isAdding ? "⏳ ADDING LIQUIDITY..." : "⚡ ADD LIQUIDITY"}
+            {isAdding ? "Adding Liquidity..." : "Add Liquidity"}
           </button>
         )}
 
         {!isFormValid && (
-          <p className="text-xs text-center text-muted-foreground">
+          <p className="text-xs text-center font-bold text-gray-500">
             {!selectedRange
               ? "Select a price range above"
               : !ethAmount || !zeusAmount

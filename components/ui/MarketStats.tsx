@@ -24,23 +24,41 @@ interface StatCardProps {
   value: string
   sub?: string
   subColor?: string
-  icon?: string
+  variant?: "yellow" | "blue" | "white" | "green"
 }
 
-function StatCard({ label, value, sub, subColor, icon }: StatCardProps) {
+function StatCard({ label, value, sub, subColor, variant = "white" }: StatCardProps) {
+  const bgMap = {
+    yellow: { background: "#f0e64e", color: "#000" },
+    blue: { background: "#1a6fd4", color: "#fff" },
+    white: { background: "#ffffff", color: "#000" },
+    green: { background: "#3bff8a", color: "#000" },
+  }
+  const style = bgMap[variant]
+
   return (
-    <div className="card-zeus p-5 space-y-2 group">
-      <div className="flex items-center gap-2">
-        {icon && <span className="text-lg">{icon}</span>}
-        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-          {label}
-        </p>
-      </div>
-      <p className="text-2xl font-bold font-mono text-foreground group-hover:text-primary transition-colors">
+    <div
+      className="p-5 rounded-2xl"
+      style={{
+        background: style.background,
+        color: style.color,
+        border: "3px solid #000",
+        boxShadow: "5px 5px 0 #000",
+      }}
+    >
+      <p
+        className="text-xs uppercase tracking-widest font-bold mb-2 opacity-70"
+      >
+        {label}
+      </p>
+      <p
+        className="text-2xl font-bold"
+        style={{ fontFamily: "var(--font-titan-one)", letterSpacing: "0.02em" }}
+      >
         {value}
       </p>
       {sub && (
-        <p className={`text-sm font-medium ${subColor || "text-muted-foreground"}`}>
+        <p className={`text-sm font-bold mt-1 ${subColor || "opacity-70"}`}>
           {sub}
         </p>
       )}
@@ -54,7 +72,7 @@ export function MarketStats() {
   if (error) {
     return (
       <div className="card-zeus p-4">
-        <p className="text-sm text-destructive">⚠ Failed to load market data</p>
+        <p className="text-sm font-bold text-destructive">Failed to load market data</p>
       </div>
     )
   }
@@ -63,9 +81,9 @@ export function MarketStats() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="card-zeus p-5 space-y-3">
-            <div className="skeleton h-3 w-20" />
-            <div className="skeleton h-7 w-28" />
+          <div key={i} className="p-5 rounded-2xl" style={{ background: "#fff", border: "3px solid #000", boxShadow: "5px 5px 0 #000" }}>
+            <div className="skeleton h-3 w-20 mb-3" />
+            <div className="skeleton h-7 w-28 mb-2" />
             <div className="skeleton h-3 w-16" />
           </div>
         ))}
@@ -73,32 +91,32 @@ export function MarketStats() {
     )
   }
 
-  const priceChangeColor = priceData.priceChange24h >= 0 ? "text-success" : "text-destructive"
-  const priceChangeIcon = priceData.priceChange24h >= 0 ? "📈" : "📉"
+  const isPositive = priceData.priceChange24h >= 0
+  const priceChangeText = `${isPositive ? "+" : ""}${formatPercentage(priceData.priceChange24h)} 24h`
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <StatCard
-        icon="💰"
+        variant="yellow"
         label="Price (USD)"
         value={formatPrice(priceData.priceUsd)}
-        sub={`${priceChangeIcon} ${formatPercentage(priceData.priceChange24h)}`}
-        subColor={priceChangeColor}
+        sub={priceChangeText}
+        subColor={isPositive ? "text-green-700" : "text-red-600"}
       />
       <StatCard
-        icon="⟠"
+        variant="blue"
         label="Price (ETH)"
         value={priceData.priceEth.toFixed(8)}
         sub="ETH"
       />
       <StatCard
-        icon="🏛️"
+        variant="white"
         label="Market Cap"
         value={formatCurrency(priceData.marketCapUsd)}
         sub={`FDV: ${formatCurrency(priceData.fullyDilutedValuation)}`}
       />
       <StatCard
-        icon="📊"
+        variant="green"
         label="24h Volume"
         value={formatCurrency(priceData.volume24h)}
         sub={`Updated: ${new Date(priceData.lastUpdated).toLocaleTimeString()}`}
