@@ -12,20 +12,20 @@
  */
 
 :root {
-  --background: #4394f4;
-  --background-light: #8dc6fa;
+  --background: #4BBFE0;
+  --background-light: #7dd4ef;
   --foreground: #000000;
   --card: #ffffff;
   --card-foreground: #000000;
   --border: #000000;
   --input: #ffffff;
-  --primary: #f0e64e;
+  --primary: #FFE600;
   --primary-foreground: #000000;
   --secondary: #3bff8a;
   --secondary-foreground: #000000;
   --muted: #c8e0f8;
   --muted-foreground: #1a5a9a;
-  --accent: #f0e64e;
+  --accent: #FFE600;
   --accent-foreground: #000000;
   --destructive: #ff3333;
   --destructive-foreground: #ffffff;
@@ -77,9 +77,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   min-height: 100vh;
-  /* Halftone dot texture like zeuscoin.vip */
-  background-image: radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image: url('/bg-squiggle.png');
+  background-size: 300px 300px;
+  background-repeat: repeat;
 }
 
 /* Custom Scrollbar */
@@ -141,7 +141,7 @@ body {
    ============================================================ */
 
 .btn-zeus {
-  background-color: #f0e64e;
+  background-color: #FFE600;
   border: 3px solid #000000;
   border-radius: 2.5rem;
   color: #000000;
@@ -369,6 +369,53 @@ body {
   pointer-events: none;
   user-select: none;
   opacity: 0.7;
+}
+
+/* ============================================================
+   HERO TITLE — pepes.dog style with white fill + thick black stroke
+   ============================================================ */
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 10vw, 7rem);
+  color: #ffffff;
+  -webkit-text-stroke: 4px #000000;
+  text-shadow:
+    5px 5px 0 #000,
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+/* ============================================================
+   SQUIGGLE BACKGROUND utility class
+   ============================================================ */
+
+.squiggle-bg {
+  background-image: url('/bg-squiggle.png');
+  background-size: 300px 300px;
+  background-repeat: repeat;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .section-title {
+    font-size: 1.75rem;
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 12vw, 4rem);
+  }
+
+  .btn-zeus {
+    font-size: 0.9rem;
+    padding: 0.6rem 1.4rem;
+  }
 }
 
 /* ============================================================

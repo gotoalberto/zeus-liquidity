@@ -107,7 +107,7 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
       {/* Preset Buttons */}
       <div>
         <p className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-3">Presets</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {[
             { key: "conservative" as const, label: "Conservative", range: "80% – 300%" },
             { key: "moderate" as const, label: "Moderate", range: "50% – 1000%" },
