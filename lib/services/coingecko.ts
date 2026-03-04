@@ -7,18 +7,19 @@
 import { COINGECKO_API_KEY, ZEUS_TOKEN_ADDRESS, ZEUS_DECIMALS } from "@/lib/constants"
 import { PriceData, OHLCData } from "@/types"
 
-const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
+// CoinGecko Pro API requires different base URL
+// Pro API keys must use pro-api.coingecko.com
+const COINGECKO_BASE_URL = COINGECKO_API_KEY?.startsWith("CG-")
+  ? "https://pro-api.coingecko.com/api/v3"
+  : "https://api.coingecko.com/api/v3"
 
-// CoinGecko API key can be passed either as header or query param
-// For demo/free tier, use x-cg-demo-api-key header
-// For pro tier, use x-cg-pro-api-key header
 const headers: Record<string, string> = {
   "Accept": "application/json",
 }
 
 // Add API key header if available
 if (COINGECKO_API_KEY) {
-  // Try pro key first, fallback to demo key
+  // Pro API keys start with "CG-" and use x-cg-pro-api-key header
   headers["x-cg-pro-api-key"] = COINGECKO_API_KEY
 }
 
