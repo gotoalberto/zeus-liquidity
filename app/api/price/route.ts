@@ -12,7 +12,14 @@ export const revalidate = 60 // Cache for 60 seconds
 export async function GET() {
   try {
     const priceData = await getZeusPriceData()
-    return NextResponse.json(priceData)
+
+    // Convert BigInt to string for JSON serialization
+    const serializable = {
+      ...priceData,
+      totalSupply: priceData.totalSupply.toString(),
+    }
+
+    return NextResponse.json(serializable)
   } catch (error) {
     console.error("Price API error:", error)
     return NextResponse.json(

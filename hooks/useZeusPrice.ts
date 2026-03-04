@@ -19,7 +19,13 @@ export function useZeusPrice() {
       if (!response.ok) {
         throw new Error("Failed to fetch ZEUS price")
       }
-      return response.json()
+      const data = await response.json()
+
+      // Convert totalSupply string back to BigInt
+      return {
+        ...data,
+        totalSupply: BigInt(data.totalSupply),
+      }
     },
     staleTime: 60_000, // 60 seconds
     gcTime: 5 * 60_000, // 5 minutes
