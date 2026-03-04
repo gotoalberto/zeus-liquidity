@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { createChart, ColorType, type IChartApi } from "lightweight-charts"
+import { createChart, ColorType, CandlestickSeries, type IChartApi } from "lightweight-charts"
 import { useZeusOHLC } from "@/hooks/useZeusPrice"
 import { ChartTimeframe, OHLCData } from "@/types"
 
@@ -55,15 +55,14 @@ export function PriceChart() {
     chartRef.current = chart
 
     // Add candlestick series using v5 API
-    const candlestickSeries = chart.addSeries({
-      type: "Candlestick",
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#10B981",
       downColor: "#EF4444",
       borderUpColor: "#10B981",
       borderDownColor: "#EF4444",
       wickUpColor: "#10B981",
       wickDownColor: "#EF4444",
-    } as any)
+    })
 
     candlestickSeriesRef.current = candlestickSeries
 

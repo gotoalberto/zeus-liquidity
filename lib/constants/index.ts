@@ -46,7 +46,7 @@ export const RPC_URL = `https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_
 
 export const COINGECKO_API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY
 export const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
-export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID
+export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID?.trim()
 
 // ============================================================================
 // Trading Configuration
