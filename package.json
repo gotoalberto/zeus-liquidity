@@ -41,5 +41,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18"
+  },
+  "optionalDependencies": {
+    "@solana/kit": "^5.5.1",
+    "@solana/web3.js": "^1.98.4",
+    "axios": "^1.13.6"
   }
 }
