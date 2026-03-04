@@ -120,8 +120,10 @@ export function AddLiquidityForm() {
 
   if (!isConnected) {
     return (
-      <div className="bg-card rounded-lg border border-border p-8 text-center">
-        <p className="text-muted-foreground">Connect your wallet to add liquidity</p>
+      <div className="p-8 text-center space-y-4">
+        <div className="text-4xl">⚡</div>
+        <p className="text-muted-foreground font-semibold">Connect your wallet to add liquidity</p>
+        <p className="text-xs text-muted-foreground/60">Become a ZEUS LP and earn fees</p>
       </div>
     )
   }
@@ -143,22 +145,28 @@ export function AddLiquidityForm() {
     !hasInsufficientZeus
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Range Selector */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Select Range</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+          ⚡ Select Range
+        </h3>
         <RangeSelector onRangeChange={setSelectedRange} />
       </div>
 
+      <hr className="divider-zeus" />
+
       {/* Amount Inputs */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Deposit Amounts</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+          ⚡ Deposit Amounts
+        </h3>
         <div className="space-y-4">
           {/* ETH Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">ETH Amount</label>
-              <span className="text-xs text-muted-foreground">
+              <label className="text-sm font-semibold">⟠ ETH Amount</label>
+              <span className="text-xs text-muted-foreground font-mono">
                 Balance: {ethBalanceNum.toFixed(6)} ETH
               </span>
             </div>
@@ -169,27 +177,25 @@ export function AddLiquidityForm() {
                 onChange={(e) => setEthAmount(e.target.value)}
                 placeholder="0.0"
                 step="0.01"
-                className={`w-full px-4 py-3 bg-input border rounded-lg font-mono text-lg focus:outline-none focus:border-primary ${
-                  hasInsufficientEth ? "border-destructive" : "border-border"
-                }`}
+                className={`input-zeus text-lg pr-16 ${hasInsufficientEth ? "error" : ""}`}
               />
               <button
                 onClick={() => setEthAmount((ethBalanceNum * 0.99).toFixed(6))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-primary/10 text-primary text-xs rounded hover:bg-primary/20"
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-primary/15 text-primary text-xs rounded-md font-bold hover:bg-primary/25 transition-colors"
               >
                 MAX
               </button>
             </div>
             {hasInsufficientEth && (
-              <p className="text-xs text-destructive">Insufficient ETH balance</p>
+              <p className="text-xs text-destructive">✗ Insufficient ETH balance</p>
             )}
           </div>
 
           {/* ZEUS Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">ZEUS Amount</label>
-              <span className="text-xs text-muted-foreground">
+              <label className="text-sm font-semibold">⚡ ZEUS Amount</label>
+              <span className="text-xs text-muted-foreground font-mono">
                 Balance: {zeusBalanceNum.toFixed(4)} ZEUS
               </span>
             </div>
@@ -200,42 +206,40 @@ export function AddLiquidityForm() {
                 onChange={(e) => setZeusAmount(e.target.value)}
                 placeholder="0.0"
                 step="0.01"
-                className={`w-full px-4 py-3 bg-input border rounded-lg font-mono text-lg focus:outline-none focus:border-primary ${
-                  hasInsufficientZeus ? "border-destructive" : "border-border"
-                }`}
+                className={`input-zeus text-lg pr-16 ${hasInsufficientZeus ? "error" : ""}`}
               />
               <button
                 onClick={() => setZeusAmount(zeusBalanceNum.toFixed(4))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-primary/10 text-primary text-xs rounded hover:bg-primary/20"
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-primary/15 text-primary text-xs rounded-md font-bold hover:bg-primary/25 transition-colors"
               >
                 MAX
               </button>
             </div>
             {hasInsufficientZeus && (
-              <p className="text-xs text-destructive">Insufficient ZEUS balance</p>
+              <p className="text-xs text-destructive">✗ Insufficient ZEUS balance</p>
             )}
           </div>
 
           {/* Estimated USD Value */}
           {ethAmountNum > 0 && zeusAmountNum > 0 && priceData && ethPriceUsd && (
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-xs text-muted-foreground mb-1">Total Value</p>
-              <p className="text-xl font-bold font-mono">
-                $
-                {(
-                  ethAmountNum * ethPriceUsd +
-                  zeusAmountNum * priceData.priceUsd
-                ).toFixed(2)}
+            <div className="bg-primary/8 border border-primary/25 rounded-xl p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 font-semibold">Total Value</p>
+              <p className="text-2xl font-bold font-mono text-primary">
+                ${(ethAmountNum * ethPriceUsd + zeusAmountNum * priceData.priceUsd).toFixed(2)}
               </p>
             </div>
           )}
         </div>
       </div>
 
+      <hr className="divider-zeus" />
+
       {/* Slippage Tolerance */}
       <div>
-        <h3 className="text-sm font-medium mb-3">Slippage Tolerance</h3>
-        <div className="flex gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+          Slippage Tolerance
+        </h3>
+        <div className="flex gap-2 flex-wrap">
           {[0.1, 0.5, 1.0].map((value) => (
             <button
               key={value}
@@ -243,10 +247,10 @@ export function AddLiquidityForm() {
                 setSlippage(value)
                 setCustomSlippage("")
               }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 slippage === value && !customSlippage
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-border hover:border-primary/50"
+                  ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(232,161,23,0.3)]"
+                  : "bg-muted/30 border border-border hover:border-primary/50"
               }`}
             >
               {value}%
@@ -258,12 +262,10 @@ export function AddLiquidityForm() {
             onChange={(e) => {
               setCustomSlippage(e.target.value)
               const value = parseFloat(e.target.value)
-              if (value > 0 && value <= 50) {
-                setSlippage(value)
-              }
+              if (value > 0 && value <= 50) setSlippage(value)
             }}
-            placeholder="Custom"
-            className="px-4 py-2 bg-input border border-border rounded-lg text-sm font-mono w-24 focus:outline-none focus:border-primary"
+            placeholder="Custom %"
+            className="input-zeus text-sm w-28"
           />
         </div>
       </div>
@@ -274,24 +276,26 @@ export function AddLiquidityForm() {
           <button
             onClick={handleApprove}
             disabled={!isFormValid || isApproving}
-            className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-zeus w-full py-4 text-base"
+            style={{fontFamily:"var(--font-bangers)", fontSize:"1.2rem", letterSpacing:"0.1em"}}
           >
-            {isApproving ? "Approving ZEUS..." : "Approve ZEUS"}
+            {isApproving ? "⏳ APPROVING ZEUS..." : "⚡ APPROVE ZEUS"}
           </button>
         ) : (
           <button
             onClick={handleAddLiquidity}
             disabled={!isFormValid || isAdding}
-            className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-zeus w-full py-4 text-base"
+            style={{fontFamily:"var(--font-bangers)", fontSize:"1.2rem", letterSpacing:"0.1em"}}
           >
-            {isAdding ? "Adding Liquidity..." : "Add Liquidity"}
+            {isAdding ? "⏳ ADDING LIQUIDITY..." : "⚡ ADD LIQUIDITY"}
           </button>
         )}
 
         {!isFormValid && (
           <p className="text-xs text-center text-muted-foreground">
             {!selectedRange
-              ? "Select a price range"
+              ? "Select a price range above"
               : !ethAmount || !zeusAmount
               ? "Enter token amounts"
               : hasInsufficientEth || hasInsufficientZeus

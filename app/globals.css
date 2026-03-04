@@ -1,43 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 /**
  * ZEUS Liquidity Manager — Global Styles
  *
- * Theme: Dark mode with ZEUS branding
- * - Background: #0D0E14
- * - Cards: #161720
- * - Borders: #1E2030
+ * Theme: Olympus meets the Swamp — memecoin DeFi dark
+ * - Background: deep dark navy/purple
+ * - Cards: glassmorphism with golden borders
  * - Accent: #E8A117 (ZEUS gold)
- * - Secondary: #4C82FB (ETH blue)
+ * - Secondary: #3BFF8A (swamp green)
  */
 
 :root {
   /* Colors */
-  --background: #0D0E14;
-  --foreground: #E5E7EB;
-  --card: #161720;
-  --card-foreground: #E5E7EB;
-  --border: #1E2030;
-  --input: #1E2030;
+  --background: #080A12;
+  --foreground: #F0F0FF;
+  --card: #0F1020;
+  --card-foreground: #F0F0FF;
+  --border: #2A2D4A;
+  --border-glow: #E8A11740;
+  --input: #141628;
   --primary: #E8A117;
-  --primary-foreground: #0D0E14;
-  --secondary: #4C82FB;
-  --secondary-foreground: #FFFFFF;
-  --muted: #1E2030;
-  --muted-foreground: #9CA3AF;
+  --primary-foreground: #080A12;
+  --secondary: #3BFF8A;
+  --secondary-foreground: #080A12;
+  --muted: #1A1D30;
+  --muted-foreground: #8890B0;
   --accent: #E8A117;
-  --accent-foreground: #0D0E14;
-  --destructive: #EF4444;
+  --accent-foreground: #080A12;
+  --destructive: #FF4560;
   --destructive-foreground: #FFFFFF;
-  --success: #10B981;
-  --success-foreground: #FFFFFF;
-  --warning: #F59E0B;
-  --warning-foreground: #FFFFFF;
+  --success: #3BFF8A;
+  --success-foreground: #080A12;
+  --warning: #FFB800;
+  --warning-foreground: #080A12;
 
   /* Fonts */
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains-mono);
-  --font-display: var(--font-dm-sans);
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Bangers', cursive;
 }
 
 @theme inline {
@@ -61,72 +62,333 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 * {
   border-color: var(--border);
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(232,161,23,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(59,255,138,0.06) 0%, transparent 50%),
+    url('/bg-texture.png');
+  background-size: 100% auto, 100% auto, cover;
+  background-attachment: fixed;
+  background-position: top center, bottom right, center;
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
-::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
-}
-
-/* Smooth transitions */
+/* Transitions */
 * {
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Focus styles */
+/* Focus */
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-/* Card glassmorphism effect */
-.card-glass {
-  background: linear-gradient(
-    135deg,
-    rgba(22, 23, 32, 0.8) 0%,
-    rgba(22, 23, 32, 0.6) 100%
-  );
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
 }
 
-/* Gradient text */
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ============================================================
+   GRADIENT TEXT
+   ============================================================ */
+
 .gradient-text {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, #E8A117 0%, #FFD95A 50%, #E8A117 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% auto;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.gradient-text-green {
+  background: linear-gradient(135deg, #3BFF8A 0%, #00D4FF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Number formatting */
-.font-mono {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+
+.card-zeus {
+  background: linear-gradient(135deg, rgba(15,16,32,0.95) 0%, rgba(10,12,24,0.98) 100%);
+  border: 1px solid rgba(232,161,23,0.25);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(232,161,23,0.08),
+    0 4px 24px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(232,161,23,0.12);
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-zeus::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232,161,23,0.5), transparent);
+}
+
+.card-zeus:hover {
+  border-color: rgba(232,161,23,0.45);
+  box-shadow:
+    0 0 0 1px rgba(232,161,23,0.15),
+    0 8px 32px rgba(0,0,0,0.7),
+    0 0 24px rgba(232,161,23,0.08),
+    inset 0 1px 0 rgba(232,161,23,0.2);
+}
+
+.card-glass {
+  background: linear-gradient(135deg, rgba(15,16,32,0.8) 0%, rgba(10,12,24,0.85) 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.btn-zeus {
+  background: linear-gradient(135deg, #E8A117 0%, #FFB830 50%, #E8A117 100%);
+  background-size: 200% auto;
+  color: #080A12;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  cursor: pointer;
+  box-shadow:
+    0 0 20px rgba(232,161,23,0.3),
+    0 4px 12px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-zeus::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.btn-zeus:hover {
+  background-position: right center;
+  box-shadow:
+    0 0 30px rgba(232,161,23,0.5),
+    0 6px 20px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  transform: translateY(-1px);
+}
+
+.btn-zeus:hover::after { opacity: 1; }
+.btn-zeus:active { transform: translateY(0); }
+.btn-zeus:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* ============================================================
+   STATUS BADGES
+   ============================================================ */
+
+.badge-inrange {
+  background: rgba(59,255,138,0.1);
+  color: #3BFF8A;
+  border: 1px solid rgba(59,255,138,0.3);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-outrange {
+  background: rgba(255,184,0,0.1);
+  color: #FFB800;
+  border: 1px solid rgba(255,184,0,0.3);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-closed {
+  background: rgba(136,144,176,0.1);
+  color: #8890B0;
+  border: 1px solid rgba(136,144,176,0.2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   GLOW EFFECTS
+   ============================================================ */
+
+.glow-gold {
+  box-shadow: 0 0 20px rgba(232,161,23,0.4), 0 0 40px rgba(232,161,23,0.15);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(59,255,138,0.4), 0 0 40px rgba(59,255,138,0.15);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 20px rgba(232,161,23,0.6), 0 0 40px rgba(232,161,23,0.3);
+}
+
+/* ============================================================
+   DECORATIVE
+   ============================================================ */
+
+.divider-zeus {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232,161,23,0.4), transparent);
+  margin: 24px 0;
+}
+
+.lightning-border {
+  position: relative;
+}
+.lightning-border::before {
+  content: '⚡';
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary);
+  font-size: 14px;
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(232,161,23,0.3); }
+  50% { box-shadow: 0 0 25px rgba(232,161,23,0.6), 0 0 50px rgba(232,161,23,0.2); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--muted) 25%, rgba(42,45,74,0.8) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+/* ============================================================
+   INPUTS
+   ============================================================ */
+
+.input-zeus {
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  padding: 12px 16px;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-zeus:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(232,161,23,0.15), 0 0 10px rgba(232,161,23,0.1);
+}
+
+.input-zeus.error {
+  border-color: var(--destructive);
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.header-zeus {
+  background: linear-gradient(180deg, rgba(8,10,18,0.95) 0%, rgba(8,10,18,0.85) 100%);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(232,161,23,0.2);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.5), 0 1px 0 rgba(232,161,23,0.1);
+}
+
+/* ============================================================
+   SECTION TITLES
+   ============================================================ */
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  text-shadow: 0 0 20px rgba(232,161,23,0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::before {
+  content: '⚡';
+  font-size: 1.2rem;
 }

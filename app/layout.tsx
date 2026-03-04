@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Inter, JetBrains_Mono, DM_Sans } from "next/font/google"
+import { Inter, JetBrains_Mono, Bangers } from "next/font/google"
 import "./globals.css"
 import { Web3Provider } from "@/providers/Web3Provider"
 import { Toaster } from "sonner"
@@ -16,16 +16,17 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 })
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const bangers = Bangers({
+  variable: "--font-bangers",
   subsets: ["latin"],
+  weight: "400",
   display: "swap",
 })
 
 export const metadata: Metadata = {
-  title: "ZEUS Liquidity Manager | Uniswap V4",
-  description: "Professional liquidity management for ZEUS/ETH pair on Uniswap V4. Provide liquidity with market cap-based ranges.",
-  keywords: ["ZEUS", "Uniswap V4", "Liquidity", "DeFi", "Ethereum"],
+  title: "ZEUS Liquidity Manager | earn.pepes.dog",
+  description: "Provide liquidity for ZEUS/ETH on Uniswap V4. The god dog earns.",
+  keywords: ["ZEUS", "Uniswap V4", "Liquidity", "DeFi", "Ethereum", "Pepe"],
   authors: [{ name: "ZEUS Protocol" }],
 }
 
@@ -41,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} ${dmSans.variable} font-sans antialiased bg-background text-foreground`}
+        className={`${inter.variable} ${jetbrainsMono.variable} ${bangers.variable} font-sans antialiased bg-background text-foreground`}
       >
         <Web3Provider>
           {children}
@@ -49,9 +50,10 @@ export default function RootLayout({
             position="bottom-right"
             toastOptions={{
               style: {
-                background: "#161720",
-                border: "1px solid #1E2030",
-                color: "#E5E7EB",
+                background: "#0F1020",
+                border: "1px solid rgba(232,161,23,0.3)",
+                color: "#F0F0FF",
+                boxShadow: "0 0 20px rgba(232,161,23,0.15)",
               },
             }}
           />

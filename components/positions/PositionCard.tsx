@@ -1,19 +1,5 @@
 "use client"
 
-/**
- * PositionCard Component
- *
- * Displays individual position with:
- * - Token ID
- * - MCAP range (primary display)
- * - Price range (collapsible detail)
- * - Status badge (in-range / out-of-range / closed)
- * - Token amounts (ETH + ZEUS with 9 decimals)
- * - Total value in USD
- * - Uncollected fees
- * - Action buttons (Collect Fees / Close Position)
- */
-
 import { Position } from "@/types"
 import { ZEUS_DECIMALS } from "@/lib/constants"
 
@@ -24,12 +10,8 @@ interface PositionCardProps {
 }
 
 function formatCurrency(value: number): string {
-  if (value >= 1_000_000) {
-    return `$${(value / 1_000_000).toFixed(2)}M`
-  }
-  if (value >= 1_000) {
-    return `$${(value / 1_000).toFixed(2)}K`
-  }
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`
   return `$${value.toFixed(2)}`
 }
 
@@ -41,123 +23,124 @@ function formatTokenAmount(amount: bigint, decimals: number, maxDecimals: number
 export function PositionCard({ position, onCollectFees, onClosePosition }: PositionCardProps) {
   const statusConfig = {
     "in-range": {
-      label: "In Range",
-      bgColor: "bg-success/10",
-      textColor: "text-success",
-      borderColor: "border-success/20",
+      label: "⚡ In Range",
+      className: "badge-inrange",
     },
     "out-of-range": {
-      label: "Out of Range",
-      bgColor: "bg-warning/10",
-      textColor: "text-warning",
-      borderColor: "border-warning/20",
+      label: "⚠ Out of Range",
+      className: "badge-outrange",
     },
     closed: {
-      label: "Closed",
-      bgColor: "bg-muted",
-      textColor: "text-muted-foreground",
-      borderColor: "border-muted",
+      label: "✗ Closed",
+      className: "badge-closed",
     },
   }
 
   const config = statusConfig[position.status]
 
   return (
-    <div className="bg-card rounded-lg border border-border p-6 space-y-4 hover:border-primary/30 transition-colors">
+    <div className="card-zeus p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold font-mono">#{position.tokenId.toString()}</h3>
-          <span
-            className={`px-2 py-1 rounded-md text-xs font-medium border ${config.bgColor} ${config.textColor} ${config.borderColor}`}
-          >
-            {config.label}
+          <span className="text-muted-foreground text-sm font-mono">
+            #{position.tokenId.toString()}
           </span>
+          <span className={config.className}>{config.label}</span>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold font-mono">{formatCurrency(position.totalValueUsd)}</p>
+          <p className="text-2xl font-bold font-mono text-foreground">
+            {formatCurrency(position.totalValueUsd)}
+          </p>
           <p className="text-xs text-muted-foreground">Total Value</p>
         </div>
       </div>
 
-      {/* MCAP Range (Primary Display) */}
-      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">Market Cap Range</p>
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold font-mono">{formatCurrency(position.minMcap)}</span>
-          <span className="text-muted-foreground">→</span>
-          <span className="text-lg font-bold font-mono">{formatCurrency(position.maxMcap)}</span>
+      <hr className="divider-zeus" style={{margin:"0"}} />
+
+      {/* MCAP Range */}
+      <div className="bg-muted/30 rounded-xl p-4 border border-primary/15">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-semibold">
+          Market Cap Range
+        </p>
+        <div className="flex items-center gap-3">
+          <span className="text-lg font-bold font-mono text-primary">
+            {formatCurrency(position.minMcap)}
+          </span>
+          <span className="text-primary/60 text-lg">→</span>
+          <span className="text-lg font-bold font-mono text-primary">
+            {formatCurrency(position.maxMcap)}
+          </span>
         </div>
       </div>
 
       {/* Token Amounts */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">ETH Amount</p>
+        <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+          <p className="text-xs text-muted-foreground mb-1">⟠ ETH</p>
           <p className="text-lg font-bold font-mono">
-            {formatTokenAmount(position.amount0, 18, 6)} ETH
+            {formatTokenAmount(position.amount0, 18, 6)}
           </p>
         </div>
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">ZEUS Amount</p>
+        <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+          <p className="text-xs text-muted-foreground mb-1">⚡ ZEUS</p>
           <p className="text-lg font-bold font-mono">
-            {formatTokenAmount(position.amount1, ZEUS_DECIMALS, 4)} ZEUS
+            {formatTokenAmount(position.amount1, ZEUS_DECIMALS, 4)}
           </p>
         </div>
       </div>
 
       {/* Uncollected Fees */}
       {position.uncollectedFeesUsd > 0.01 && (
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Uncollected Fees</p>
-              <p className="text-lg font-bold font-mono text-primary">
-                {formatCurrency(position.uncollectedFeesUsd)}
-              </p>
-            </div>
-            <button
-              onClick={() => onCollectFees?.(position.tokenId)}
-              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-            >
-              Collect
-            </button>
+        <div className="bg-primary/8 border border-primary/25 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">Uncollected Fees</p>
+            <p className="text-xl font-bold font-mono text-primary">
+              {formatCurrency(position.uncollectedFeesUsd)}
+            </p>
           </div>
+          <button
+            onClick={() => onCollectFees?.(position.tokenId)}
+            className="btn-zeus px-4 py-2 text-sm"
+            style={{fontFamily:"var(--font-bangers)", fontSize:"0.95rem", letterSpacing:"0.06em"}}
+          >
+            COLLECT
+          </button>
         </div>
       )}
 
-      {/* Price Range (Collapsible Detail) */}
+      {/* Advanced Details */}
       <details className="group">
-        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
-          <span className="group-open:rotate-90 transition-transform">▶</span>
+        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-primary transition-colors list-none flex items-center gap-2 select-none">
+          <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
           Advanced Details
         </summary>
-        <div className="mt-3 space-y-2 text-sm">
+        <div className="mt-3 space-y-2 text-sm bg-muted/20 rounded-lg p-3 border border-border/40">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Price Range (ETH):</span>
-            <span className="font-mono">
-              {position.minPriceEth.toFixed(8)} - {position.maxPriceEth.toFixed(8)}
+            <span className="font-mono text-xs">
+              {position.minPriceEth.toFixed(8)} – {position.maxPriceEth.toFixed(8)}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Tick Range:</span>
-            <span className="font-mono">
-              {position.tickLower} - {position.tickUpper}
+            <span className="font-mono text-xs">
+              {position.tickLower} – {position.tickUpper}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Liquidity:</span>
-            <span className="font-mono">{position.liquidity.toString()}</span>
+            <span className="font-mono text-xs">{position.liquidity.toString()}</span>
           </div>
         </div>
       </details>
 
       {/* Action Buttons */}
       {position.status !== "closed" && (
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-1">
           <button
             onClick={() => onClosePosition?.(position.tokenId)}
-            className="flex-1 px-4 py-2 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg font-medium hover:bg-destructive/20 transition-colors"
+            className="flex-1 px-4 py-2.5 bg-destructive/10 text-destructive border border-destructive/25 rounded-lg font-semibold text-sm hover:bg-destructive/20 transition-colors"
           >
             Close Position
           </button>

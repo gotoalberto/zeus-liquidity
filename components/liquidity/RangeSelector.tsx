@@ -101,7 +101,7 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
 
   if (!priceData || !ethPriceUsd) {
     return (
-      <div className="bg-card rounded-lg border border-border p-6">
+      <div className="card-zeus p-6">
         <p className="text-muted-foreground">Loading market data...</p>
       </div>
     )
@@ -116,71 +116,62 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
   return (
     <div className="space-y-6">
       {/* Current Market Cap */}
-      <div className="bg-muted/50 rounded-lg p-4">
-        <p className="text-xs text-muted-foreground mb-1">Current Market Cap</p>
-        <p className="text-2xl font-bold font-mono">{formatCurrency(currentMcap)}</p>
+      <div className="bg-primary/8 border border-primary/25 rounded-xl p-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 font-semibold">Current Market Cap</p>
+        <p className="text-2xl font-bold font-mono text-primary">{formatCurrency(currentMcap)}</p>
       </div>
 
       {/* Preset Buttons */}
       <div>
-        <p className="text-sm text-muted-foreground mb-3">Presets</p>
+        <p className="text-sm text-muted-foreground mb-3 font-semibold uppercase tracking-widest text-xs">Presets</p>
         <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => applyPreset("conservative")}
-            className="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium hover:border-primary/50 transition-colors"
-          >
-            Conservative
-            <span className="block text-xs text-muted-foreground mt-1">80% - 300%</span>
-          </button>
-          <button
-            onClick={() => applyPreset("moderate")}
-            className="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium hover:border-primary/50 transition-colors"
-          >
-            Moderate
-            <span className="block text-xs text-muted-foreground mt-1">50% - 1000%</span>
-          </button>
-          <button
-            onClick={() => applyPreset("aggressive")}
-            className="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium hover:border-primary/50 transition-colors"
-          >
-            Aggressive
-            <span className="block text-xs text-muted-foreground mt-1">20% - 5000%</span>
-          </button>
+          {[
+            { key: "conservative" as const, label: "Conservative", range: "80% – 300%" },
+            { key: "moderate" as const, label: "Moderate", range: "50% – 1000%" },
+            { key: "aggressive" as const, label: "Aggressive", range: "20% – 5000%" },
+          ].map(({ key, label, range }) => (
+            <button
+              key={key}
+              onClick={() => applyPreset(key)}
+              className="px-3 py-3 bg-muted/30 border border-border rounded-xl text-sm font-semibold hover:border-primary/50 hover:bg-primary/8 transition-all text-center"
+            >
+              {label}
+              <span className="block text-xs text-muted-foreground mt-1 font-mono">{range}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* MCAP Inputs */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Min Market Cap (USD)</label>
+          <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Min Market Cap (USD)</label>
           <input
             type="number"
             value={minMcap}
             onChange={(e) => setMinMcap(e.target.value)}
             placeholder="1000000"
-            className="w-full px-4 py-2 bg-input border border-border rounded-lg font-mono focus:outline-none focus:border-primary"
+            className="input-zeus"
           />
           {minMcapNum > 0 && (
-            <p className="text-xs text-muted-foreground">
-              ≈ {formatCurrency(minMcapNum)} (
-              {(minMcapNum / priceData.circulatingSupply).toFixed(6)} ZEUS/USD)
+            <p className="text-xs text-muted-foreground font-mono">
+              ≈ {formatCurrency(minMcapNum)}
             </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Max Market Cap (USD)</label>
+          <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Max Market Cap (USD)</label>
           <input
             type="number"
             value={maxMcap}
             onChange={(e) => setMaxMcap(e.target.value)}
             placeholder="10000000"
-            className="w-full px-4 py-2 bg-input border border-border rounded-lg font-mono focus:outline-none focus:border-primary"
+            className="input-zeus"
           />
           {maxMcapNum > 0 && (
-            <p className="text-xs text-muted-foreground">
-              ≈ {formatCurrency(maxMcapNum)} (
-              {(maxMcapNum / priceData.circulatingSupply).toFixed(6)} ZEUS/USD)
+            <p className="text-xs text-muted-foreground font-mono">
+              ≈ {formatCurrency(maxMcapNum)}
             </p>
           )}
         </div>
@@ -188,16 +179,15 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
 
       {/* Validation Warning */}
       {minMcapNum > 0 && maxMcapNum > 0 && minMcapNum >= maxMcapNum && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm text-destructive">
-          Min market cap must be less than max market cap
+        <div className="bg-destructive/10 border border-destructive/25 rounded-xl p-3 text-sm text-destructive">
+          ✗ Min market cap must be less than max market cap
         </div>
       )}
 
       {/* Out of Range Warning */}
       {isOutOfRange && (
-        <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 text-sm text-warning">
-          ⚠️ Current price is outside your selected range. You'll need price to move into range to
-          start earning fees.
+        <div className="bg-warning/10 border border-warning/25 rounded-xl p-3 text-sm text-warning">
+          ⚠ Current price is outside your selected range. Price must move into range to earn fees.
         </div>
       )}
 
@@ -205,30 +195,30 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
       {minMcapNum > 0 && maxMcapNum > 0 && minMcapNum < maxMcapNum && (
         <details className="group" open={showAdvanced}>
           <summary
-            className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2"
+            className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-primary transition-colors list-none flex items-center gap-2 select-none"
             onClick={(e) => {
               e.preventDefault()
               setShowAdvanced(!showAdvanced)
             }}
           >
-            <span className={`transition-transform ${showAdvanced ? "rotate-90" : ""}`}>▶</span>
+            <span className={`transition-transform inline-block ${showAdvanced ? "rotate-90" : ""}`}>▶</span>
             Advanced Details
           </summary>
-          <div className="mt-3 space-y-2 text-sm bg-muted/50 rounded-lg p-4">
+          <div className="mt-3 space-y-2 text-sm bg-muted/20 rounded-xl p-4 border border-border/40">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Tick Range:</span>
-              <span className="font-mono">
-                {mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)} -{" "}
+              <span className="font-mono text-xs">
+                {mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)} –{" "}
                 {mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Price Range (ETH):</span>
-              <span className="font-mono">
+              <span className="font-mono text-xs">
                 {tickToZeusEthPrice(
                   mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)
                 ).toFixed(8)}{" "}
-                -{" "}
+                –{" "}
                 {tickToZeusEthPrice(
                   mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)
                 ).toFixed(8)}
