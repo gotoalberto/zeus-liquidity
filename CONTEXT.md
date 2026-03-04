@@ -1,7 +1,7 @@
 # Zeus Liquidity Manager — Build Context
 
 ## Current Status
-**STEP 3 of 8: COMPLETE** — Moving to Step 4
+**STEP 4 of 8: COMPLETE** — Moving to Step 5
 
 ## What's Built
 - ✅ **Step 1**: Next.js 14 project initialized with TypeScript, Tailwind CSS, App Router
@@ -17,12 +17,17 @@
 - ✅ **Step 3**: `components/liquidity/PriceChart.tsx` — TradingView lightweight-charts with timeframe selector
 - ✅ **Step 3**: `components/ui/MarketStats.tsx` — Market stats display (price, mcap, volume, 24h change)
 - ✅ **Step 3**: Updated `app/page.tsx` with complete UI layout
-- ✅ **Step 3**: Build verification successful
+- ✅ **Step 4**: `lib/uniswap/mcap.ts` — MCAP ↔ Tick conversion with 9-decimal precision
+- ✅ **Step 4**: `__tests__/mcap.test.ts` — 17 unit tests validating tick math (all passing)
+- ✅ **Step 4**: Updated tsconfig.json target to ES2020 for BigInt support
+- ✅ **Step 4**: Vitest configured for testing
+- ✅ **Step 4**: Build and tests verification successful
 
 ## What's Next
-- **Step 4**: MCAP-based range math (`lib/uniswap/mcap.ts`)
-- **Step 4**: Unit tests for 9-decimal tick calculations
-- **Step 4**: `components/liquidity/RangeSelector.tsx` with MCAP input and presets
+- **Step 5**: Alchemy API integration (`lib/services/alchemy.ts`)
+- **Step 5**: Position fetching and decoding (`lib/uniswap/positions.ts`)
+- **Step 5**: `hooks/usePositions.ts` for React Query integration
+- **Step 5**: `components/positions/PositionCard.tsx` and `PositionsList.tsx`
 
 ## Critical Constants
 - ZEUS address: 0x0f7dC5D02CC1E1f5Ee47854d534D332A1081cCC8
