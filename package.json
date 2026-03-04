@@ -18,9 +18,12 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@reown/appkit": "^1.8.19",
     "@reown/appkit-adapter-wagmi": "^1.8.19",
+    "@solana/kit": "^5.5.1",
+    "@solana/web3.js": "^1.98.4",
     "@tanstack/react-query": "^5.90.21",
     "@uniswap/sdk-core": "^7.11.0",
     "@uniswap/v4-sdk": "^1.28.0",
+    "axios": "^1.13.6",
     "lightweight-charts": "^5.1.0",
     "next": "16.1.6",
     "react": "19.2.3",
@@ -41,10 +44,5 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18"
-  },
-  "optionalDependencies": {
-    "@solana/kit": "^5.5.1",
-    "@solana/web3.js": "^1.98.4",
-    "axios": "^1.13.6"
   }
 }
