@@ -44,7 +44,7 @@ function StatCard({ label, value, sub, isPositive, accent = "default" }: StatCar
       <p style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)" }}>
         {label}
       </p>
-      <p style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", color: valueColor, letterSpacing: "0.02em", lineHeight: 1 }}>
+      <p style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.5rem", color: valueColor, letterSpacing: "0.02em", lineHeight: 1 }}>
         {value}
       </p>
       {sub && (

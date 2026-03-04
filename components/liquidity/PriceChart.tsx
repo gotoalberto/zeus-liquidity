@@ -35,20 +35,29 @@ export function PriceChart() {
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#9CA3AF",
+        textColor: "#8b9ab0",
+        fontSize: 11,
       },
       grid: {
-        vertLines: { color: "#1E2030" },
-        horzLines: { color: "#1E2030" },
+        vertLines: { color: "rgba(255,255,255,0.05)" },
+        horzLines: { color: "rgba(255,255,255,0.05)" },
       },
       width: chartContainerRef.current.clientWidth,
       height: 400,
       timeScale: {
-        borderColor: "#1E2030",
+        borderColor: "rgba(255,255,255,0.1)",
         timeVisible: true,
+        secondsVisible: false,
       },
       rightPriceScale: {
-        borderColor: "#1E2030",
+        borderColor: "rgba(255,255,255,0.1)",
+        visible: true,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+        mode: 0,
+      },
+      crosshair: {
+        vertLine: { color: "rgba(255,230,0,0.3)", width: 1, style: 3 },
+        horzLine: { color: "rgba(255,230,0,0.3)", width: 1, style: 3 },
       },
     })
 
@@ -127,11 +136,19 @@ export function PriceChart() {
           <button
             key={tf.value}
             onClick={() => setSelectedTimeframe(tf)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              selectedTimeframe.value === tf.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
+            style={{
+              padding: "0.3rem 0.75rem",
+              borderRadius: "0.4rem",
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              border: "1px solid",
+              transition: "all 0.15s ease",
+              cursor: "pointer",
+              background: selectedTimeframe.value === tf.value ? "#FFE600" : "rgba(255,255,255,0.05)",
+              color: selectedTimeframe.value === tf.value ? "#000" : "rgba(255,255,255,0.5)",
+              borderColor: selectedTimeframe.value === tf.value ? "#FFE600" : "rgba(255,255,255,0.1)",
+            }}
           >
             {tf.label}
           </button>
@@ -139,16 +156,16 @@ export function PriceChart() {
       </div>
 
       {/* Chart Container */}
-      <div className="relative w-full h-[400px] bg-card rounded-lg border border-border overflow-hidden">
+      <div style={{ position: "relative", width: "100%", height: 400, borderRadius: "0.75rem", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-card/50 backdrop-blur-sm z-10">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span>Loading chart...</span>
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(13,17,23,0.7)", backdropFilter: "blur(4px)", zIndex: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "rgba(255,255,255,0.5)", fontSize: "0.875rem" }}>
+              <div style={{ width: 16, height: 16, border: "2px solid #FFE600", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              Loading chart...
             </div>
           </div>
         )}
-        <div ref={chartContainerRef} className="w-full h-full" />
+        <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
       </div>
     </div>
   )

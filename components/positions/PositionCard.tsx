@@ -40,7 +40,7 @@ export function PositionCard({ position, onCollectFees, onClosePosition }: Posit
           <span className={config.className}>{config.label}</span>
         </div>
         <div className="text-right">
-          <p style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", color: "#fff", letterSpacing: "0.02em" }}>
+          <p style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.5rem", color: "#fff", letterSpacing: "0.02em" }}>
             {formatCurrency(position.totalValueUsd)}
           </p>
           <p style={{ fontSize: "0.7rem", color: "var(--foreground-muted)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>Total Value</p>
@@ -55,11 +55,11 @@ export function PositionCard({ position, onCollectFees, onClosePosition }: Posit
           Market Cap Range
         </p>
         <div className="flex items-center gap-3">
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", color: "#FFE600" }}>
+          <span style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", color: "#FFE600" }}>
             {formatCurrency(position.minMcap)}
           </span>
           <span style={{ color: "var(--foreground-muted)", fontSize: "0.9rem" }}>→</span>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", color: "#FFE600" }}>
+          <span style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", color: "#FFE600" }}>
             {formatCurrency(position.maxMcap)}
           </span>
         </div>
@@ -73,7 +73,7 @@ export function PositionCard({ position, onCollectFees, onClosePosition }: Posit
         ].map(({ symbol, amount }) => (
           <div key={symbol} style={{ background: "rgba(67,148,244,0.08)", border: "1px solid rgba(67,148,244,0.2)", borderRadius: "0.75rem", padding: "0.75rem 1rem" }}>
             <p style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(67,148,244,0.7)", marginBottom: "0.3rem" }}>{symbol}</p>
-            <p style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", color: "#4394f4" }}>{amount}</p>
+            <p style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.1rem", color: "#4394f4" }}>{amount}</p>
           </div>
         ))}
       </div>
@@ -83,7 +83,7 @@ export function PositionCard({ position, onCollectFees, onClosePosition }: Posit
         <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: "0.75rem", padding: "0.875rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(34,197,94,0.6)", marginBottom: "0.3rem" }}>Uncollected Fees</p>
-            <p style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", color: "#22c55e" }}>
+            <p style={{ fontFamily: "var(--font-titan-one)", fontSize: "1.25rem", color: "#22c55e" }}>
               {formatCurrency(position.uncollectedFeesUsd)}
             </p>
           </div>
