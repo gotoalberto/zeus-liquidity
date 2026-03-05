@@ -2,20 +2,28 @@
 
 import { Position } from "@/types"
 import { ZEUS_DECIMALS, UNISWAP_V4_POSITION_MANAGER, ZEUS_TOKEN_ADDRESS, POOL_FEE, POOL_TICK_SPACING, POOL_HOOKS_ADDRESS } from "@/lib/constants"
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi"
-import { encodeAbiParameters, encodePacked } from "viem"
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract, useBalance } from "wagmi"
+import { encodeAbiParameters, encodePacked, erc20Abi, parseUnits, formatUnits, maxUint256 } from "viem"
 import { toast } from "sonner"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 interface PositionCardProps {
   position: Position
   ethPriceUsd: number
   zeusPriceUsd: number
+  currentTick: number
   onSuccess?: () => void
 }
 
 // ── V4 Actions ──────────────────────────────────────────────────────────────
-const ACTIONS = { BURN_POSITION: 0x03, DECREASE_LIQUIDITY: 0x01, TAKE_PAIR: 0x11, SWEEP: 0x14 } as const
+const ACTIONS = {
+  INCREASE_LIQUIDITY: 0x00,
+  DECREASE_LIQUIDITY: 0x01,
+  BURN_POSITION: 0x03,
+  TAKE_PAIR: 0x11,
+  SETTLE_PAIR: 0x0d,
+  SWEEP: 0x14,
+} as const
 const ETH_ADDRESS  = "0x0000000000000000000000000000000000000000" as const
 const MSG_SENDER   = "0x0000000000000000000000000000000000000001" as const
 
@@ -25,27 +33,20 @@ const PM_ABI = [{
   outputs: [],
 }] as const
 
-function poolKeyTuple() {
-  return { currency0: ETH_ADDRESS, currency1: ZEUS_TOKEN_ADDRESS as `0x${string}`, fee: POOL_FEE, tickSpacing: POOL_TICK_SPACING, hooks: POOL_HOOKS_ADDRESS as `0x${string}` }
-}
-
 function deadline() { return BigInt(Math.floor(Date.now() / 1000) + 1200) }
 
 /** BURN_POSITION + TAKE_PAIR + SWEEP — closes position and withdraws all tokens */
 function encodeBurnUnlockData(tokenId: bigint, amount0Min: bigint, amount1Min: bigint, recipient: `0x${string}`): `0x${string}` {
   const actions = encodePacked(["uint8", "uint8", "uint8"], [ACTIONS.BURN_POSITION, ACTIONS.TAKE_PAIR, ACTIONS.SWEEP])
 
-  // BURN_POSITION: (uint256 tokenId, uint128 amount0Min, uint128 amount1Min, bytes hookData)
   const burnParams = encodeAbiParameters(
     [{ type: "uint256" }, { type: "uint128" }, { type: "uint128" }, { type: "bytes" }],
     [tokenId, amount0Min, amount1Min, "0x"]
   )
-  // TAKE_PAIR: (address currency0, address currency1, address recipient)
   const takeParams = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }, { type: "address" }],
     [ETH_ADDRESS, ZEUS_TOKEN_ADDRESS as `0x${string}`, recipient]
   )
-  // SWEEP leftover ETH to msg.sender
   const sweepParams = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }],
     [ETH_ADDRESS, MSG_SENDER]
@@ -60,8 +61,6 @@ function encodeBurnUnlockData(tokenId: bigint, amount0Min: bigint, amount1Min: b
 function encodeCollectFeesUnlockData(tokenId: bigint, recipient: `0x${string}`): `0x${string}` {
   const actions = encodePacked(["uint8", "uint8", "uint8"], [ACTIONS.DECREASE_LIQUIDITY, ACTIONS.TAKE_PAIR, ACTIONS.SWEEP])
 
-  // DECREASE_LIQUIDITY: (uint256 tokenId, uint256 liquidity, uint128 amount0Min, uint128 amount1Min, bytes hookData)
-  // liquidity = 0 means just collect fees
   const decreaseParams = encodeAbiParameters(
     [{ type: "uint256" }, { type: "uint256" }, { type: "uint128" }, { type: "uint128" }, { type: "bytes" }],
     [tokenId, 0n, 0n, 0n, "0x"]
@@ -80,6 +79,64 @@ function encodeCollectFeesUnlockData(tokenId: bigint, recipient: `0x${string}`):
   )
 }
 
+/** INCREASE_LIQUIDITY + SETTLE_PAIR + SWEEP */
+function encodeIncreaseLiquidityUnlockData(
+  tokenId: bigint, liquidity: bigint, amount0Max: bigint, amount1Max: bigint
+): `0x${string}` {
+  const actions = encodePacked(
+    ["uint8", "uint8", "uint8"],
+    [ACTIONS.INCREASE_LIQUIDITY, ACTIONS.SETTLE_PAIR, ACTIONS.SWEEP]
+  )
+
+  const increaseParams = encodeAbiParameters(
+    [{ type: "uint256" }, { type: "uint256" }, { type: "uint128" }, { type: "uint128" }, { type: "bytes" }],
+    [tokenId, liquidity, amount0Max, amount1Max, "0x"]
+  )
+  const settleParams = encodeAbiParameters(
+    [{ type: "address" }, { type: "address" }],
+    [ETH_ADDRESS, ZEUS_TOKEN_ADDRESS as `0x${string}`]
+  )
+  const sweepParams = encodeAbiParameters(
+    [{ type: "address" }, { type: "address" }],
+    [ETH_ADDRESS, MSG_SENDER]
+  )
+  return encodeAbiParameters(
+    [{ type: "bytes" }, { type: "bytes[]" }],
+    [actions, [increaseParams, settleParams, sweepParams]]
+  )
+}
+
+// ── Liquidity math helpers ───────────────────────────────────────────────────
+function tickToSqrtPriceX96(tick: number): bigint {
+  const price = Math.pow(1.0001, tick)
+  const sqrtPrice = Math.sqrt(price)
+  return BigInt(Math.floor(sqrtPrice * 2 ** 96))
+}
+
+function getLiquidityForAmounts(
+  sqrtPriceX96: bigint,
+  sqrtPriceLowerX96: bigint,
+  sqrtPriceUpperX96: bigint,
+  amount0: bigint,
+  amount1: bigint,
+): bigint {
+  const Q96 = 2n ** 96n
+
+  if (sqrtPriceX96 <= sqrtPriceLowerX96) {
+    if (sqrtPriceLowerX96 === sqrtPriceUpperX96) return 0n
+    return (amount0 * sqrtPriceLowerX96 * sqrtPriceUpperX96 / Q96) /
+      (sqrtPriceUpperX96 - sqrtPriceLowerX96)
+  } else if (sqrtPriceX96 < sqrtPriceUpperX96) {
+    const liq0 = (amount0 * sqrtPriceX96 * sqrtPriceUpperX96 / Q96) /
+      (sqrtPriceUpperX96 - sqrtPriceX96)
+    const liq1 = amount1 * Q96 / (sqrtPriceX96 - sqrtPriceLowerX96)
+    return liq0 < liq1 ? liq0 : liq1
+  } else {
+    if (sqrtPriceLowerX96 === sqrtPriceUpperX96) return 0n
+    return amount1 * Q96 / (sqrtPriceUpperX96 - sqrtPriceLowerX96)
+  }
+}
+
 // ── Formatting helpers ──────────────────────────────────────────────────────
 function fmtUsd(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
@@ -94,14 +151,59 @@ const STATUS = {
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
-export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, onSuccess }: PositionCardProps) {
+export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick, onSuccess }: PositionCardProps) {
   const { address } = useAccount()
   const s = STATUS[position.status]
 
   const { writeContract: writeClose, data: closeTxHash, isPending: isClosing } = useWriteContract()
   const { writeContract: writeCollect, data: collectTxHash, isPending: isCollecting } = useWriteContract()
+  const { writeContract: writeApprove, data: approveTxHash, isPending: isApproving } = useWriteContract()
+  const { writeContract: writeAddMore, data: addMoreTxHash, isPending: isAddingMore } = useWriteContract()
+
   const { isLoading: isCloseConfirming, isSuccess: isCloseSuccess } = useWaitForTransactionReceipt({ hash: closeTxHash })
   const { isLoading: isCollectConfirming, isSuccess: isCollectSuccess } = useWaitForTransactionReceipt({ hash: collectTxHash })
+  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash })
+  const { isLoading: isAddMoreConfirming, isSuccess: isAddMoreSuccess } = useWaitForTransactionReceipt({ hash: addMoreTxHash })
+
+  // Add liquidity form state
+  const [showAddLiquidity, setShowAddLiquidity] = useState(false)
+  const [addEthAmount, setAddEthAmount] = useState("")
+  const [addZeusAmount, setAddZeusAmount] = useState("")
+
+  // Balances for the add liquidity form
+  const { data: ethBalance } = useBalance({ address })
+  const { data: zeusBalanceRaw } = useReadContract({
+    address: ZEUS_TOKEN_ADDRESS as `0x${string}`,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && showAddLiquidity },
+  })
+  const { data: zeusAllowance, refetch: refetchAllowance } = useReadContract({
+    address: ZEUS_TOKEN_ADDRESS as `0x${string}`,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: address ? [address, UNISWAP_V4_POSITION_MANAGER as `0x${string}`] : undefined,
+    query: { enabled: !!address && showAddLiquidity },
+  })
+
+  // Determine which tokens are needed based on position's tick range vs current tick
+  // tickLower = min(tickLower, tickUpper), tickUpper = max(...)
+  const posTickLower = Math.min(position.tickLower, position.tickUpper)
+  const posTickUpper = Math.max(position.tickLower, position.tickUpper)
+  const isMcapBelowRange = position.status === "out-of-range" && currentTick > posTickUpper
+  const isMcapAboveRange = position.status === "out-of-range" && currentTick < posTickLower
+  const needsEth = !isMcapBelowRange
+  const needsZeus = !isMcapAboveRange
+
+  // Auto-calculate ZEUS from ETH when both needed
+  useEffect(() => {
+    if (!needsZeus || !needsEth || !addEthAmount || zeusPriceUsd === 0 || ethPriceUsd === 0) return
+    const ethNum = parseFloat(addEthAmount)
+    if (isNaN(ethNum) || ethNum <= 0) { setAddZeusAmount(""); return }
+    const zeusNum = (ethNum * ethPriceUsd) / zeusPriceUsd
+    setAddZeusAmount(zeusNum.toFixed(4))
+  }, [addEthAmount, ethPriceUsd, zeusPriceUsd, needsZeus, needsEth])
 
   useEffect(() => {
     if (isCloseSuccess) {
@@ -114,6 +216,24 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, onSuccess }:
   useEffect(() => {
     if (isCollectSuccess) { toast.success("Fees collected!"); onSuccess?.() }
   }, [isCollectSuccess])
+
+  useEffect(() => {
+    if (isApproveSuccess) {
+      toast.success("ZEUS approved!")
+      refetchAllowance()
+    }
+  }, [isApproveSuccess])
+
+  useEffect(() => {
+    if (isAddMoreSuccess) {
+      toast.success("Liquidity added!")
+      setAddEthAmount("")
+      setAddZeusAmount("")
+      setShowAddLiquidity(false)
+      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
+      onSuccess?.()
+    }
+  }, [isAddMoreSuccess])
 
   const handleClose = () => {
     if (!address) return
@@ -141,7 +261,55 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, onSuccess }:
     })
   }
 
+  const handleApproveZeus = () => {
+    if (!address) return
+    writeApprove({
+      address: ZEUS_TOKEN_ADDRESS as `0x${string}`,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [UNISWAP_V4_POSITION_MANAGER as `0x${string}`, maxUint256],
+    }, {
+      onError: (e) => toast.error(`Approve failed: ${e.message.slice(0, 80)}`),
+    })
+  }
+
+  const handleAddLiquidity = () => {
+    if (!address) return
+    const ethNum = parseFloat(addEthAmount) || 0
+    const zeusNum = parseFloat(addZeusAmount) || 0
+    const amount0 = needsEth ? parseUnits(addEthAmount || "0", 18) : 0n
+    const amount1 = needsZeus ? parseUnits(addZeusAmount || "0", ZEUS_DECIMALS) : 0n
+
+    const sqrtPrice = tickToSqrtPriceX96(currentTick)
+    const sqrtLower = tickToSqrtPriceX96(posTickLower)
+    const sqrtUpper = tickToSqrtPriceX96(posTickUpper)
+    const liquidity = getLiquidityForAmounts(sqrtPrice, sqrtLower, sqrtUpper, amount0, amount1)
+
+    if (liquidity === 0n) {
+      toast.error("Could not compute liquidity — check amounts")
+      return
+    }
+
+    const slippage = 1.01
+    const amount0Max = BigInt(Math.floor(Number(amount0) * slippage))
+    const amount1Max = BigInt(Math.floor(Number(amount1) * slippage))
+
+    const unlockData = encodeIncreaseLiquidityUnlockData(position.tokenId, liquidity, amount0Max, amount1Max)
+    const ethValue = needsEth ? parseUnits(addEthAmount || "0", 18) : 0n
+
+    writeAddMore({
+      address: UNISWAP_V4_POSITION_MANAGER as `0x${string}`,
+      abi: PM_ABI,
+      functionName: "modifyLiquidities",
+      args: [unlockData, deadline()],
+      value: ethValue,
+    }, {
+      onError: (e) => toast.error(`Add liquidity failed: ${e.message.slice(0, 80)}`),
+    })
+  }
+
   const isBusy = isClosing || isCloseConfirming || isCollecting || isCollectConfirming
+  const isAddBusy = isApproving || isApproveConfirming || isAddingMore || isAddMoreConfirming
 
   const ethAmount   = Number(position.amount0) / 1e18
   const zeusAmount  = Number(position.amount1) / 10 ** ZEUS_DECIMALS
@@ -157,6 +325,18 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, onSuccess }:
 
   const mcapLow  = Math.min(position.minMcap, position.maxMcap)
   const mcapHigh = Math.max(position.minMcap, position.maxMcap)
+
+  // Add liquidity form derived values
+  const addEthNum = parseFloat(addEthAmount) || 0
+  const addZeusNum = parseFloat(addZeusAmount) || 0
+  const ethBalanceNum = ethBalance ? parseFloat(formatUnits(ethBalance.value, 18)) : 0
+  const zeusBalanceNum = zeusBalanceRaw ? parseFloat(formatUnits(zeusBalanceRaw, ZEUS_DECIMALS)) : 0
+  const addTotalUsd = (needsEth ? addEthNum * ethPriceUsd : 0) + (needsZeus ? addZeusNum * zeusPriceUsd : 0)
+  const addZeusRaw = addZeusNum > 0 ? parseUnits(addZeusAmount || "0", ZEUS_DECIMALS) : 0n
+  const isZeusApproved = !needsZeus || (zeusAllowance !== undefined && zeusAllowance >= addZeusRaw)
+  const isAddFormValid = (needsEth ? addEthNum > 0 && addEthNum <= ethBalanceNum : true) &&
+    (needsZeus ? addZeusNum > 0 && addZeusNum <= zeusBalanceNum : true) &&
+    (needsEth ? addEthNum > 0 : true) || (needsZeus ? addZeusNum > 0 : true)
 
   return (
     <div style={{
@@ -253,18 +433,168 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, onSuccess }:
 
       {/* Action buttons */}
       {position.status !== "closed" && (
-        <button
-          onClick={handleClose}
-          disabled={isBusy}
-          style={{
-            width: "100%", padding: "0.65rem", borderRadius: "0.75rem", cursor: isBusy ? "not-allowed" : "pointer",
-            background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.25)",
-            color: "#f87171", fontSize: "0.875rem", fontWeight: 700, letterSpacing: "0.04em",
-            opacity: isBusy ? 0.5 : 1, transition: "all 0.15s",
-          }}
-        >
-          {isClosing || isCloseConfirming ? "Closing..." : "Close Position"}
-        </button>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            onClick={() => setShowAddLiquidity(!showAddLiquidity)}
+            disabled={isBusy}
+            style={{
+              flex: 1, padding: "0.65rem", borderRadius: "0.75rem", cursor: isBusy ? "not-allowed" : "pointer",
+              background: showAddLiquidity ? "rgba(67,148,244,0.15)" : "rgba(67,148,244,0.08)",
+              border: `1px solid ${showAddLiquidity ? "rgba(67,148,244,0.5)" : "rgba(67,148,244,0.25)"}`,
+              color: "#a8c8ff", fontSize: "0.875rem", fontWeight: 700, letterSpacing: "0.04em",
+              opacity: isBusy ? 0.5 : 1, transition: "all 0.15s",
+            }}
+          >
+            {showAddLiquidity ? "Cancel" : "Add Liquidity"}
+          </button>
+          <button
+            onClick={handleClose}
+            disabled={isBusy}
+            style={{
+              flex: 1, padding: "0.65rem", borderRadius: "0.75rem", cursor: isBusy ? "not-allowed" : "pointer",
+              background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.25)",
+              color: "#f87171", fontSize: "0.875rem", fontWeight: 700, letterSpacing: "0.04em",
+              opacity: isBusy ? 0.5 : 1, transition: "all 0.15s",
+            }}
+          >
+            {isClosing || isCloseConfirming ? "Closing..." : "Close Position"}
+          </button>
+        </div>
+      )}
+
+      {/* Add Liquidity inline form */}
+      {showAddLiquidity && position.status !== "closed" && (
+        <div style={{
+          background: "rgba(67,148,244,0.05)", border: "1px solid rgba(67,148,244,0.2)",
+          borderRadius: "1rem", padding: "1.25rem",
+          display: "flex", flexDirection: "column", gap: "1rem",
+        }}>
+          <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(67,148,244,0.7)" }}>
+            Add Liquidity
+            {isMcapBelowRange && <span style={{ color: "rgba(251,191,36,0.8)", marginLeft: "0.5rem" }}>(ZEUS only — mcap below range)</span>}
+            {isMcapAboveRange && <span style={{ color: "rgba(109,156,244,0.8)", marginLeft: "0.5rem" }}>(ETH only — mcap above range)</span>}
+          </p>
+
+          {/* ETH input */}
+          {needsEth && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.375rem" }}>
+                <label style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600 }}>ETH Amount</label>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                  Balance: {ethBalanceNum.toFixed(4)} ETH
+                </span>
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  type="number"
+                  value={addEthAmount}
+                  onChange={(e) => setAddEthAmount(e.target.value)}
+                  placeholder="0.0"
+                  style={{
+                    width: "100%", padding: "0.625rem 3.5rem 0.625rem 0.875rem",
+                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(109,156,244,0.25)",
+                    borderRadius: "0.625rem", color: "#fff", fontSize: "1rem",
+                    outline: "none", boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={() => setAddEthAmount(Math.max(0, ethBalanceNum - 0.002).toFixed(6))}
+                  style={{
+                    position: "absolute", right: "0.625rem", top: "50%", transform: "translateY(-50%)",
+                    background: "rgba(109,156,244,0.2)", border: "none", borderRadius: "0.375rem",
+                    color: "#a8c8ff", fontSize: "0.65rem", fontWeight: 700, padding: "0.15rem 0.4rem",
+                    cursor: "pointer",
+                  }}
+                >MAX</button>
+              </div>
+              {addEthNum > ethBalanceNum && addEthNum > 0 && (
+                <p style={{ fontSize: "0.7rem", color: "#f87171", marginTop: "0.25rem" }}>Insufficient ETH balance</p>
+              )}
+            </div>
+          )}
+
+          {/* ZEUS input */}
+          {needsZeus && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.375rem" }}>
+                <label style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600 }}>ZEUS Amount</label>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                  Balance: {zeusBalanceNum.toFixed(2)} ZEUS
+                </span>
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  type="number"
+                  value={addZeusAmount}
+                  onChange={(e) => setAddZeusAmount(e.target.value)}
+                  placeholder="0.0"
+                  readOnly={needsEth && needsZeus}
+                  style={{
+                    width: "100%", padding: "0.625rem 3.5rem 0.625rem 0.875rem",
+                    background: needsEth && needsZeus ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(240,230,78,0.25)",
+                    borderRadius: "0.625rem", color: needsEth && needsZeus ? "var(--text-muted)" : "#fff",
+                    fontSize: "1rem", outline: "none", boxSizing: "border-box",
+                    cursor: needsEth && needsZeus ? "default" : "text",
+                  }}
+                />
+                {!(needsEth && needsZeus) && (
+                  <button
+                    onClick={() => setAddZeusAmount(zeusBalanceNum.toFixed(4))}
+                    style={{
+                      position: "absolute", right: "0.625rem", top: "50%", transform: "translateY(-50%)",
+                      background: "rgba(240,230,78,0.15)", border: "none", borderRadius: "0.375rem",
+                      color: "var(--highlight)", fontSize: "0.65rem", fontWeight: 700, padding: "0.15rem 0.4rem",
+                      cursor: "pointer",
+                    }}
+                  >MAX</button>
+                )}
+              </div>
+              {addZeusNum > zeusBalanceNum && addZeusNum > 0 && (
+                <p style={{ fontSize: "0.7rem", color: "#f87171", marginTop: "0.25rem" }}>Insufficient ZEUS balance</p>
+              )}
+              {needsEth && needsZeus && (
+                <p style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>Auto-calculated from ETH amount</p>
+              )}
+            </div>
+          )}
+
+          {/* USD total */}
+          {addTotalUsd > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Total deposit value</span>
+              <span style={{ fontSize: "0.9rem", fontFamily: "var(--font-display)", color: "#fff" }}>{fmtUsd(addTotalUsd)}</span>
+            </div>
+          )}
+
+          {/* Action button */}
+          {needsZeus && !isZeusApproved ? (
+            <button
+              onClick={handleApproveZeus}
+              disabled={isAddBusy}
+              className="btn-zeus"
+              style={{ width: "100%", padding: "0.75rem", fontSize: "0.875rem", fontWeight: 700, opacity: isAddBusy ? 0.5 : 1 }}
+            >
+              {isApproving || isApproveConfirming ? "Approving ZEUS..." : "Approve ZEUS"}
+            </button>
+          ) : (
+            <button
+              onClick={handleAddLiquidity}
+              disabled={isAddBusy || !(addEthNum > 0 || addZeusNum > 0)}
+              className="btn-zeus"
+              style={{ width: "100%", padding: "0.75rem", fontSize: "0.875rem", fontWeight: 700, opacity: (isAddBusy || !(addEthNum > 0 || addZeusNum > 0)) ? 0.5 : 1 }}
+            >
+              {isAddingMore || isAddMoreConfirming ? "Adding Liquidity..." : "Add Liquidity"}
+            </button>
+          )}
+
+          {addMoreTxHash && (
+            <a href={`https://etherscan.io/tx/${addMoreTxHash}`} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: "0.7rem", textAlign: "center", color: "#a8c8ff", fontFamily: "monospace" }}>
+              Tx: {addMoreTxHash.slice(0, 10)}...
+            </a>
+          )}
+        </div>
       )}
 
       {/* Tx links */}

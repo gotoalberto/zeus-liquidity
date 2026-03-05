@@ -4,6 +4,7 @@ import { usePositions } from "@/hooks/usePositions"
 import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 import { PositionCard } from "./PositionCard"
 import { useAccount } from "wagmi"
+import { mcapToTick } from "@/lib/uniswap/mcap"
 
 const SkeletonCard = () => (
   <div style={{
@@ -53,6 +54,9 @@ export function PositionsList() {
 
   const eth = ethPriceUsd ?? 0
   const zeus = priceData?.priceUsd ?? 0
+  const currentTick = priceData && eth
+    ? (() => { try { return mcapToTick(priceData.marketCapUsd, eth, priceData.totalSupply) } catch { return 0 } })()
+    : 0
 
   return (
     <section id="positions" style={{ padding: "5rem 1.5rem" }}>
@@ -68,6 +72,7 @@ export function PositionsList() {
               position={position}
               ethPriceUsd={eth}
               zeusPriceUsd={zeus}
+              currentTick={currentTick}
             />
           ))}
         </div>
