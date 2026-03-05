@@ -22,7 +22,7 @@ export const DECIMAL_ADJUSTMENT = 10 ** (ZEUS_DECIMALS - ETH_DECIMALS)
 // Uniswap V4 Contract Addresses (Ethereum Mainnet)
 // ============================================================================
 
-export const UNISWAP_V4_POSITION_MANAGER = "0xbD216513d74C8cf14cf4747E6AaA7aE2a94d76Aa" as const
+export const UNISWAP_V4_POSITION_MANAGER = "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e" as const
 export const UNISWAP_V4_POOL_MANAGER = "0x000000000004444c5dc75cB358380D2e3dE08A90" as const
 
 // ============================================================================
