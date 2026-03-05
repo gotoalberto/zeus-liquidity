@@ -38,14 +38,13 @@ export const POOL_HOOKS_ADDRESS = "0x0000000000000000000000000000000000000000" a
 // ============================================================================
 
 export const CHAIN_ID = 1 // Ethereum Mainnet
-export const RPC_URL = `https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
 
 // ============================================================================
 // API Configuration
 // ============================================================================
 
 export const COINGECKO_API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY
-export const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+// ALCHEMY_API_KEY is server-side only (no NEXT_PUBLIC_ prefix) — used only in /app/api/rpc/route.ts
 export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID?.trim()
 
 // ============================================================================

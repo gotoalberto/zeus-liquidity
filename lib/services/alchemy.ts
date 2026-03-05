@@ -5,7 +5,8 @@
  * Used for fetching positions, balances, and making contract calls
  */
 
-import { ALCHEMY_API_KEY, RPC_URL } from "@/lib/constants"
+// RPC proxy endpoint — keeps Alchemy key server-side
+const RPC_PROXY = "/api/rpc"
 
 // ============================================================================
 // RPC Client
@@ -15,17 +16,10 @@ export async function alchemyRpcCall<T = any>(
   method: string,
   params: any[] = []
 ): Promise<T> {
-  const response = await fetch(RPC_URL, {
+  const response = await fetch(RPC_PROXY, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method,
-      params,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   })
 
   if (!response.ok) {
@@ -161,7 +155,7 @@ export async function getGasPrice(): Promise<bigint> {
 export async function alchemyBatchRpcCall(
   calls: { method: string; params: any[] }[]
 ): Promise<any[]> {
-  const response = await fetch(RPC_URL, {
+  const response = await fetch(RPC_PROXY, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
