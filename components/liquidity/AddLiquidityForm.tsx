@@ -86,6 +86,7 @@ function encodeMintUnlockData({
   )
 
   // params[0]: MINT_POSITION_FROM_DELTAS params
+  // Signature: (PoolKey poolKey, int24 tickLower, int24 tickUpper, uint128 amount0Max, uint128 amount1Max, address owner, bytes hookData)
   const mintParams = encodeAbiParameters(
     [
       { type: "tuple", components: [
@@ -99,11 +100,10 @@ function encodeMintUnlockData({
       { type: "int24" },   // tickUpper
       { type: "uint128" }, // amount0Max
       { type: "uint128" }, // amount1Max
-      { type: "uint128" }, // minLiquidity (0 = no lower bound)
-      { type: "address" }, // recipient
+      { type: "address" }, // owner/recipient
       { type: "bytes" },   // hookData
     ],
-    [{ currency0, currency1, fee, tickSpacing, hooks }, tickLower, tickUpper, amount0Max, amount1Max, 0n, recipient, "0x"]
+    [{ currency0, currency1, fee, tickSpacing, hooks }, tickLower, tickUpper, amount0Max, amount1Max, recipient, "0x"]
   )
 
   // params[1]: SETTLE_PAIR params
