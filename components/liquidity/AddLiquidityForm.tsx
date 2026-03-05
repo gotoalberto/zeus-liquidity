@@ -425,6 +425,9 @@ export function AddLiquidityForm() {
                   MAX
                 </button>
               </div>
+              {ethAmountNum > 0 && ethPriceUsd && (
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>≈ ${(ethAmountNum * ethPriceUsd).toFixed(2)}</p>
+              )}
               {hasInsufficientEth && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ETH balance</p>}
             </div>
           )}
@@ -455,6 +458,9 @@ export function AddLiquidityForm() {
                   MAX
                 </button>
               </div>
+              {zeusAmountNum > 0 && priceData && (
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>≈ ${(zeusAmountNum * priceData.priceUsd).toFixed(2)}</p>
+              )}
               {hasInsufficientZeus && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ZEUS balance</p>}
             </div>
           )}
