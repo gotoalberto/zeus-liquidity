@@ -52,31 +52,40 @@ const POSITION_MANAGER_ABI = [
 ] as const
 
 // Actions.sol constants
+// MINT_POSITION_FROM_DELTAS (0x05): computes liquidity automatically from token amounts + current sqrtPrice
+// No need to calculate liquidity offchain — the contract uses getLiquidityForAmounts internally
 const ACTIONS = {
-  MINT_POSITION: 0x02,
+  MINT_POSITION_FROM_DELTAS: 0x05,
   SETTLE_PAIR: 0x0d,
-  SWEEP: 0x14,
 } as const
 
 /**
- * Encode unlockData for a MINT_POSITION + SETTLE_PAIR call
+ * Encode unlockData for MINT_POSITION_FROM_DELTAS + SETTLE_PAIR
+ *
+ * MINT_POSITION_FROM_DELTAS params: (poolKey, tickLower, tickUpper, amount0Max, amount1Max, minLiquidity, recipient, hookData)
+ * - amount0Max / amount1Max: max tokens to spend (slippage cap)
+ * - minLiquidity: min liquidity to receive (set to 0 for no lower bound)
+ * - The contract reads current sqrtPrice and calls getLiquidityForAmounts internally
+ *
+ * SETTLE_PAIR params: (currency0, currency1) — contract reads full debt automatically
+ *
  * unlockData = abi.encode(bytes actions, bytes[] params)
- * actions = packed bytes of action codes
- * params[0] = abi.encode(poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient, hookData)
- * params[1] = abi.encode(currency0, currency1)  -- for SETTLE_PAIR
  */
 function encodeMintUnlockData({
   currency0, currency1, fee, tickSpacing, hooks,
-  tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient,
+  tickLower, tickUpper, amount0Max, amount1Max, recipient,
 }: {
   currency0: `0x${string}`; currency1: `0x${string}`; fee: number
   tickSpacing: number; hooks: `0x${string}`; tickLower: number; tickUpper: number
-  liquidity: bigint; amount0Max: bigint; amount1Max: bigint; recipient: `0x${string}`
+  amount0Max: bigint; amount1Max: bigint; recipient: `0x${string}`
 }): `0x${string}` {
-  // actions: [MINT_POSITION, SETTLE_PAIR] packed as bytes
-  const actions = encodePacked(["uint8", "uint8"], [ACTIONS.MINT_POSITION, ACTIONS.SETTLE_PAIR])
+  // actions: [MINT_POSITION_FROM_DELTAS, SETTLE_PAIR] packed as bytes
+  const actions = encodePacked(
+    ["uint8", "uint8"],
+    [ACTIONS.MINT_POSITION_FROM_DELTAS, ACTIONS.SETTLE_PAIR]
+  )
 
-  // params[0]: MINT_POSITION params
+  // params[0]: MINT_POSITION_FROM_DELTAS params
   const mintParams = encodeAbiParameters(
     [
       { type: "tuple", components: [
@@ -86,18 +95,18 @@ function encodeMintUnlockData({
         { name: "tickSpacing", type: "int24" },
         { name: "hooks", type: "address" },
       ]},
-      { type: "int24" }, // tickLower
-      { type: "int24" }, // tickUpper
-      { type: "uint256" }, // liquidity
+      { type: "int24" },   // tickLower
+      { type: "int24" },   // tickUpper
       { type: "uint128" }, // amount0Max
       { type: "uint128" }, // amount1Max
+      { type: "uint128" }, // minLiquidity (0 = no lower bound)
       { type: "address" }, // recipient
       { type: "bytes" },   // hookData
     ],
-    [{ currency0, currency1, fee, tickSpacing, hooks }, tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient, "0x"]
+    [{ currency0, currency1, fee, tickSpacing, hooks }, tickLower, tickUpper, amount0Max, amount1Max, 0n, recipient, "0x"]
   )
 
-  // params[1]: SETTLE_PAIR params (currency0, currency1)
+  // params[1]: SETTLE_PAIR params
   const settleParams = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }],
     [currency0, currency1]
@@ -258,9 +267,6 @@ export function AddLiquidityForm() {
     const amount0Max = ethAmountRaw
     const amount1Max = zeusAmountRawBig
 
-    // Use max uint128 as liquidity — V4 PositionManager interprets this as "use all provided tokens"
-    const liquidityMax = (2n ** 128n) - 1n
-
     const unlockData = encodeMintUnlockData({
       currency0: ETH_ADDRESS,
       currency1: ZEUS_TOKEN_ADDRESS as `0x${string}`,
@@ -269,7 +275,6 @@ export function AddLiquidityForm() {
       hooks: POOL_HOOKS_ADDRESS as `0x${string}`,
       tickLower: tLower,
       tickUpper: tUpper,
-      liquidity: liquidityMax,
       amount0Max,
       amount1Max,
       recipient: address,
