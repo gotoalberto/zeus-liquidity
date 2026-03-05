@@ -26,7 +26,6 @@ import { PriceRange } from "@/types"
 import {
   ZEUS_TOKEN_ADDRESS,
   ZEUS_DECIMALS,
-  DEFAULT_SLIPPAGE_TOLERANCE,
   UNISWAP_V4_POSITION_MANAGER,
   POOL_FEE,
   POOL_TICK_SPACING,
@@ -209,8 +208,7 @@ export function AddLiquidityForm() {
   const [selectedRange, setSelectedRange] = useState<PriceRange | null>(null)
   const [ethAmount, setEthAmount] = useState<string>("")
   const [zeusAmount, setZeusAmount] = useState<string>("")
-  const [slippage, setSlippage] = useState<number>(DEFAULT_SLIPPAGE_TOLERANCE)
-  const [customSlippage, setCustomSlippage] = useState<string>("")
+  const slippage = 1.0
 
   // Approval success effect
   useEffect(() => {
@@ -226,6 +224,7 @@ export function AddLiquidityForm() {
       toast.success("Liquidity added successfully!")
       setEthAmount("")
       setZeusAmount("")
+      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
     }
   }, [isMintSuccess])
 
@@ -473,46 +472,6 @@ export function AddLiquidityForm() {
               </p>
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="divider" />
-
-      {/* Slippage Tolerance */}
-      <div>
-        <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.75rem" }}>Slippage Tolerance</p>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {[0.1, 0.5, 1.0].map((value) => (
-            <button
-              key={value}
-              onClick={() => { setSlippage(value); setCustomSlippage("") }}
-              style={{
-                padding: "0.35rem 1rem",
-                borderRadius: "9999px",
-                fontSize: "0.85rem",
-                fontWeight: 700,
-                cursor: "pointer",
-                transition: "all 0.15s",
-                background: slippage === value && !customSlippage ? "rgba(240,230,78,0.15)" : "rgba(255,255,255,0.04)",
-                border: slippage === value && !customSlippage ? "1px solid rgba(240,230,78,0.4)" : "1px solid rgba(255,255,255,0.1)",
-                color: slippage === value && !customSlippage ? "var(--highlight)" : "var(--text-secondary)",
-              }}
-            >
-              {value}%
-            </button>
-          ))}
-          <input
-            type="number"
-            value={customSlippage}
-            onChange={(e) => {
-              setCustomSlippage(e.target.value)
-              const value = parseFloat(e.target.value)
-              if (value > 0 && value <= 50) setSlippage(value)
-            }}
-            placeholder="Custom %"
-            className="input-zeus"
-            style={{ fontSize: "0.85rem", width: "7rem" }}
-          />
         </div>
       </div>
 

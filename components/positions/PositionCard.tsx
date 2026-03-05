@@ -104,7 +104,11 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, onSuccess }:
   const { isLoading: isCollectConfirming, isSuccess: isCollectSuccess } = useWaitForTransactionReceipt({ hash: collectTxHash })
 
   useEffect(() => {
-    if (isCloseSuccess) { toast.success("Position closed!"); onSuccess?.() }
+    if (isCloseSuccess) {
+      toast.success("Position closed!")
+      onSuccess?.()
+      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
+    }
   }, [isCloseSuccess])
 
   useEffect(() => {
