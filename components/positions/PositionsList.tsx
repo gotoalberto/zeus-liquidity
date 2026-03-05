@@ -5,17 +5,6 @@ import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 import { PositionCard } from "./PositionCard"
 import { useAccount } from "wagmi"
 
-const EmptyState = ({ text, sub }: { text: string; sub?: string }) => (
-  <div style={{
-    background: "var(--glass-bg)", border: "1px solid var(--glass-border-bright)",
-    borderRadius: "1.25rem", padding: "3rem 2rem", textAlign: "center",
-    backdropFilter: "blur(12px)",
-  }}>
-    <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.5rem" }}>{text}</p>
-    {sub && <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>{sub}</p>}
-  </div>
-)
-
 const SkeletonCard = () => (
   <div style={{
     background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
@@ -37,35 +26,52 @@ const SkeletonCard = () => (
 
 export function PositionsList() {
   const { isConnected } = useAccount()
-  const { data: positions, isLoading, error } = usePositions()
+  const { data: positions, isLoading } = usePositions()
   const { data: priceData } = useZeusPrice()
   const { data: ethPriceUsd } = useEthPrice()
 
-  if (!isConnected) return <EmptyState text="Connect your wallet" sub="Connect your wallet to view your liquidity positions" />
+  // Not connected or still loading with no data yet — hide section entirely
+  if (!isConnected) return null
+
   if (isLoading) return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <SkeletonCard />
-      <SkeletonCard />
-    </div>
+    <section id="positions" style={{ padding: "5rem 1.5rem" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ marginBottom: "2.5rem" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "0.4rem" }}>Uniswap V4</p>
+          <h2 className="section-title">Your Positions</h2>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    </section>
   )
-  if (error) return <EmptyState text="Failed to load positions" sub={(error as Error).message} />
-  if (!positions || positions.length === 0) return (
-    <EmptyState text="No positions yet" sub="Add liquidity to the ZEUS/ETH pool to start earning fees" />
-  )
+
+  // No active positions — hide section entirely
+  if (!positions || positions.length === 0) return null
 
   const eth = ethPriceUsd ?? 0
   const zeus = priceData?.priceUsd ?? 0
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {positions.map((position) => (
-        <PositionCard
-          key={position.tokenId.toString()}
-          position={position}
-          ethPriceUsd={eth}
-          zeusPriceUsd={zeus}
-        />
-      ))}
-    </div>
+    <section id="positions" style={{ padding: "5rem 1.5rem" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ marginBottom: "2.5rem" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "0.4rem" }}>Uniswap V4</p>
+          <h2 className="section-title">Your Positions</h2>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {positions.map((position) => (
+            <PositionCard
+              key={position.tokenId.toString()}
+              position={position}
+              ethPriceUsd={eth}
+              zeusPriceUsd={zeus}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }

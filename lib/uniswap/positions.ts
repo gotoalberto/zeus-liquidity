@@ -71,29 +71,39 @@ export async function getCurrentPoolTick(): Promise<number> {
 }
 
 /**
- * Get all position NFT token IDs owned by an address via Transfer(from=0, to=user) events
+ * Get all position NFT token IDs currently owned by an address.
+ * Fetches Transfer-in and Transfer-out events, returns only tokens still held.
  */
 export async function getUserPositionTokenIds(userAddress: string): Promise<bigint[]> {
   try {
     const currentBlockResp = await alchemyBatchRpcCall([{ method: "eth_blockNumber", params: [] }])
     const currentBlock = parseInt(currentBlockResp[0], 16)
-    // V4 launched around block 21,355,000 — search from there
     const fromBlock = Math.max(21355000, currentBlock - 500000)
+    const fromBlockHex = `0x${fromBlock.toString(16)}`
+    const addr = userAddress.slice(2).toLowerCase()
 
-    const logs = await getLogs({
-      address: UNISWAP_V4_POSITION_MANAGER,
-      fromBlock: `0x${fromBlock.toString(16)}`,
-      toBlock: "latest",
-      topics: [
-        TRANSFER_TOPIC,
-        null,
-        `0x000000000000000000000000${userAddress.slice(2).toLowerCase()}`,
-      ],
-    })
+    // Fetch transfers IN (to=user) and OUT (from=user) in parallel
+    const [logsIn, logsOut] = await Promise.all([
+      getLogs({
+        address: UNISWAP_V4_POSITION_MANAGER,
+        fromBlock: fromBlockHex,
+        toBlock: "latest",
+        topics: [TRANSFER_TOPIC, null, `0x000000000000000000000000${addr}`],
+      }),
+      getLogs({
+        address: UNISWAP_V4_POSITION_MANAGER,
+        fromBlock: fromBlockHex,
+        toBlock: "latest",
+        topics: [TRANSFER_TOPIC, `0x000000000000000000000000${addr}`, null],
+      }),
+    ])
 
-    const tokenIds = logs.map((log) => BigInt(log.topics[3]))
-    // Deduplicate
-    return Array.from(new Map(tokenIds.map((id) => [id.toString(), id])).values())
+    const received = new Set(logsIn.map((l) => BigInt(l.topics[3]).toString()))
+    const sent = new Set(logsOut.map((l) => BigInt(l.topics[3]).toString()))
+
+    // Only keep tokens received but not sent away / burned
+    const owned = [...received].filter((id) => !sent.has(id))
+    return owned.map((id) => BigInt(id))
   } catch (error) {
     console.error("Failed to fetch position token IDs:", error)
     return []

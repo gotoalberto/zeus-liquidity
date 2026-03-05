@@ -28,7 +28,7 @@ export function usePositions() {
       const positions = await Promise.all(
         positionInfos
           .map((info, i) => ({ info, tokenId: tokenIds[i] }))
-          .filter(({ info }) => info !== null)
+          .filter(({ info }) => info !== null && info!.liquidity > 0n)
           .map(({ info, tokenId }) =>
             buildPosition(
               tokenId,

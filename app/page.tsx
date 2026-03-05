@@ -157,18 +157,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── POSITIONS ─────────────────────────────── */}
-      <section id="positions" style={{ padding: "5rem 1.5rem" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "2.5rem", flexWrap: "wrap", gap: "1rem" }}>
-            <div>
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "0.4rem" }}>Uniswap V4</p>
-              <h2 className="section-title">Your Positions</h2>
-            </div>
-          </div>
-          <PositionsList />
-        </div>
-      </section>
+      {/* ── POSITIONS — self-contained, hidden when no active positions ── */}
+      <PositionsList />
 
       {/* ── ADD LIQUIDITY ─────────────────────────── */}
       <section id="addlp" style={{ padding: "5rem 1.5rem", background: "var(--bg-secondary)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
