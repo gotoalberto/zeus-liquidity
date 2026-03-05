@@ -162,10 +162,7 @@ export function LiquidityDepthChart() {
 
         if (height < 2) continue
 
-        // Skip positions that are entirely above current price (out-of-range upside)
         const currentMcap = priceData?.marketCapUsd ?? 0
-        if (mcapLower > currentMcap) continue
-
         const inRange = currentMcap >= mcapLower && currentMcap <= mcapUpper
         const alpha = 0.18
         const color = inRange ? `rgba(240,230,78,${alpha})` : `rgba(67,148,244,${alpha})`

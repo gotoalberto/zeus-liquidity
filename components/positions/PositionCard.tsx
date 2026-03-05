@@ -3,6 +3,7 @@
 import { Position } from "@/types"
 import { ZEUS_DECIMALS, UNISWAP_V4_POSITION_MANAGER, ZEUS_TOKEN_ADDRESS, POOL_FEE, POOL_TICK_SPACING, POOL_HOOKS_ADDRESS } from "@/lib/constants"
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract, useBalance } from "wagmi"
+import { useQueryClient } from "@tanstack/react-query"
 import { encodeAbiParameters, encodePacked, erc20Abi, parseUnits, formatUnits, maxUint256 } from "viem"
 import { toast } from "sonner"
 import { useEffect, useState } from "react"
@@ -153,6 +154,7 @@ const STATUS = {
 // ── Component ───────────────────────────────────────────────────────────────
 export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick, onSuccess }: PositionCardProps) {
   const { address } = useAccount()
+  const queryClient = useQueryClient()
   const s = STATUS[position.status]
 
   const { writeContract: writeClose, data: closeTxHash, isPending: isClosing } = useWriteContract()
@@ -210,6 +212,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
       toast.success("Position closed!")
       onSuccess?.()
       fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
+      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
     }
   }, [isCloseSuccess])
 
@@ -231,6 +234,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
       setAddZeusAmount("")
       setShowAddLiquidity(false)
       fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
+      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
       onSuccess?.()
     }
   }, [isAddMoreSuccess])

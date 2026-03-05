@@ -20,6 +20,7 @@
 
 import { useState, useEffect } from "react"
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi"
+import { useQueryClient } from "@tanstack/react-query"
 import { parseUnits, formatUnits, erc20Abi, maxUint256, parseEther, encodeAbiParameters, encodePacked } from "viem"
 import { RangeSelector } from "./RangeSelector"
 import { PriceRange } from "@/types"
@@ -176,6 +177,7 @@ export function AddLiquidityForm() {
   const chainId = useChainId()
   const { data: priceData } = useZeusPrice()
   const { data: ethPriceUsd } = useEthPrice()
+  const queryClient = useQueryClient()
 
   // Balances
   const { data: ethBalance } = useBalance({ address })
@@ -225,6 +227,7 @@ export function AddLiquidityForm() {
       setEthAmount("")
       setZeusAmount("")
       fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
+      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
     }
   }, [isMintSuccess])
 
