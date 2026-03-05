@@ -238,7 +238,7 @@ export default function Home() {
             <h2 className="section-title">Add Liquidity</h2>
           </div>
           <div className="card-zeus" style={{ padding: "2rem 2.5rem" }}>
-            <AddLiquidityForm initialMinMcap={prefillMcap?.min} initialMaxMcap={prefillMcap?.max} />
+            <AddLiquidityForm initialMinMcap={prefillMcap?.min} initialMaxMcap={prefillMcap?.max} onConnect={() => open()} />
           </div>
         </div>
       </section>

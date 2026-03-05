@@ -175,9 +175,10 @@ const ETH_ADDRESS = "0x0000000000000000000000000000000000000000" as const
 interface AddLiquidityFormProps {
   initialMinMcap?: number
   initialMaxMcap?: number
+  onConnect?: () => void
 }
 
-export function AddLiquidityForm({ initialMinMcap, initialMaxMcap }: AddLiquidityFormProps = {}) {
+export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: AddLiquidityFormProps = {}) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   const { data: priceData } = useZeusPrice()
@@ -360,17 +361,6 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap }: AddLiquidit
     })
   }
 
-  if (!isConnected) {
-    return (
-      <div style={{ padding: "3rem", textAlign: "center" }}>
-        <p style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", color: "var(--text-primary)", marginBottom: "0.5rem" }}>
-          Connect your wallet to add liquidity
-        </p>
-        <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", fontWeight: 600 }}>Become a ZEUS LP and earn fees</p>
-      </div>
-    )
-  }
-
   const isLoading = isApproving || isApproveConfirming || isMinting || isMintConfirming
 
   return (
@@ -485,7 +475,15 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap }: AddLiquidit
 
       {/* Action Buttons */}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        {needsZeus && !isZeusApproved ? (
+        {!isConnected ? (
+          <button
+            onClick={onConnect}
+            className="btn-zeus"
+            style={{ width: "100%", fontSize: "1rem", padding: "0.9rem" }}
+          >
+            Connect Wallet
+          </button>
+        ) : needsZeus && !isZeusApproved ? (
           <button
             onClick={handleApprove}
             disabled={!isFormValid || isLoading || isWrongChain}
