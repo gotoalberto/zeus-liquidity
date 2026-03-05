@@ -298,6 +298,15 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
     setTooltip(band ? { x: mouseX, y: mouseY, band } : null)
   }
 
+  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mouseY = e.clientY - rect.top
+    const band = drawnBandsRef.current.find(b => mouseY >= b.top && mouseY <= b.bottom)
+    if (band && onJoinRange) {
+      onJoinRange(band.mcapLow, band.mcapHigh)
+    }
+  }
+
   function handlePointerLeave() {
     setTooltip(null)
   }
@@ -307,7 +316,7 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
 
   // Tooltip positioning — stays within container bounds
   const TOOLTIP_W = 200
-  const TOOLTIP_H = onJoinRange ? 110 : 88
+  const TOOLTIP_H = onJoinRange ? 88 : 72
   let tooltipLeft = 0
   let tooltipTop = 0
   if (tooltip) {
@@ -381,10 +390,11 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
           onPointerDown={handlePointerMove}
+          onClick={handleClick}
           style={{
             position: "absolute",
             inset: 0,
-            cursor: tooltip ? "crosshair" : "default",
+            cursor: tooltip && onJoinRange ? "pointer" : tooltip ? "crosshair" : "default",
             zIndex: 2,
           }}
         />
@@ -423,28 +433,16 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
               </span>
             </div>
             {onJoinRange && (
-              <button
-                onPointerDown={(e) => {
-                  e.stopPropagation()
-                  onJoinRange(tooltip.band.mcapLow, tooltip.band.mcapHigh)
-                }}
-                style={{
-                  marginTop: "0.6rem",
-                  width: "100%",
-                  padding: "0.4rem 0.5rem",
-                  borderRadius: "0.5rem",
-                  border: `1px solid ${tooltip.band.inRange ? "rgba(240,230,78,0.5)" : "rgba(67,148,244,0.5)"}`,
-                  background: tooltip.band.inRange ? "rgba(240,230,78,0.12)" : "rgba(67,148,244,0.12)",
-                  color: tooltip.band.inRange ? "#f0e64e" : "#4394f4",
-                  fontFamily: "var(--font-display)",
-                  fontSize: "0.78rem",
-                  cursor: "pointer",
-                  pointerEvents: "auto",
-                  transition: "all 0.15s",
-                }}
-              >
-                Join this range
-              </button>
+              <div style={{
+                marginTop: "0.5rem",
+                fontSize: "0.65rem",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                color: tooltip.band.inRange ? "rgba(240,230,78,0.45)" : "rgba(67,148,244,0.45)",
+                textAlign: "center",
+              }}>
+                Haz click para unirte al rango
+              </div>
             )}
           </div>
         )}
