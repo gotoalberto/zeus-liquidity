@@ -154,12 +154,16 @@ export function AddLiquidityForm() {
   const tickLower = selectedRange ? Math.min(selectedRange.minTick, selectedRange.maxTick) : null
   const tickUpper = selectedRange ? Math.max(selectedRange.minTick, selectedRange.maxTick) : null
 
-  const isOutOfRangeBelow = selectedRange && currentTick !== null && tickLower !== null && currentTick < tickLower
-  const isOutOfRangeAbove = selectedRange && currentTick !== null && tickUpper !== null && currentTick > tickUpper
+  // In this pool higher tick = lower mcap (more ZEUS per ETH = cheaper ZEUS)
+  // tickUpper (numerically higher) corresponds to lower mcap bound
+  // tickLower (numerically lower) corresponds to higher mcap bound
+  // currentTick > tickUpper → mcap below range → ZEUS only (currency1, cheaper side)
+  // currentTick < tickLower → mcap above range → ETH only (currency0, expensive side)
+  const isMcapBelowRange = selectedRange && currentTick !== null && tickUpper !== null && currentTick > tickUpper
+  const isMcapAboveRange = selectedRange && currentTick !== null && tickLower !== null && currentTick < tickLower
 
-  // Below range → ETH only; above range → ZEUS only; in range → both
-  const needsEth = !selectedRange || currentTick === null || !isOutOfRangeAbove
-  const needsZeus = !selectedRange || currentTick === null || !isOutOfRangeBelow
+  const needsZeus = !selectedRange || currentTick === null || !isMcapAboveRange
+  const needsEth = !selectedRange || currentTick === null || !isMcapBelowRange
 
   // Auto-calculate ZEUS amount based on ETH when both needed
   useEffect(() => {
@@ -179,9 +183,9 @@ export function AddLiquidityForm() {
 
   // Clear irrelevant amounts when range changes
   useEffect(() => {
-    if (isOutOfRangeBelow) setEthAmount("")
-    else if (isOutOfRangeAbove) setZeusAmount("")
-  }, [isOutOfRangeBelow, isOutOfRangeAbove])
+    if (isMcapBelowRange) setEthAmount("")
+    else if (isMcapAboveRange) setZeusAmount("")
+  }, [isMcapBelowRange, isMcapAboveRange])
 
   const ethAmountNum = parseFloat(ethAmount) || 0
   const zeusAmountNum = parseFloat(zeusAmount) || 0
@@ -288,14 +292,14 @@ export function AddLiquidityForm() {
       <div className="divider" />
 
       {/* Out-of-range notice */}
-      {isOutOfRangeBelow && (
+      {isMcapBelowRange && (
         <div style={{ background: "rgba(109,156,244,0.08)", border: "1px solid rgba(109,156,244,0.25)", borderRadius: "0.75rem", padding: "0.875rem 1rem", fontSize: "0.85rem", fontWeight: 600, color: "#a8c8ff" }}>
-          Current price is below your range. Deposit <strong>ETH only</strong> — ZEUS will be added automatically when price enters range.
+          Market cap is below your range. Deposit <strong>ZEUS only</strong> — ETH will be added automatically when price enters range.
         </div>
       )}
-      {isOutOfRangeAbove && (
+      {isMcapAboveRange && (
         <div style={{ background: "rgba(109,156,244,0.08)", border: "1px solid rgba(109,156,244,0.25)", borderRadius: "0.75rem", padding: "0.875rem 1rem", fontSize: "0.85rem", fontWeight: 600, color: "#a8c8ff" }}>
-          Current price is above your range. Deposit <strong>ZEUS only</strong> — ETH will be added automatically when price enters range.
+          Market cap is above your range. Deposit <strong>ETH only</strong> — ZEUS will be added automatically when price enters range.
         </div>
       )}
 
@@ -315,8 +319,9 @@ export function AddLiquidityForm() {
                 <input
                   type="number"
                   value={ethAmount}
-                  onChange={(e) => setEthAmount(e.target.value)}
+                  onChange={(e) => { const v = e.target.value; if (v === "" || parseFloat(v) >= 0) setEthAmount(v) }}
                   placeholder="0.0"
+                  min="0"
                   step="0.01"
                   className={`input-zeus ${hasInsufficientEth ? "error" : ""}`}
                   style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
@@ -344,8 +349,9 @@ export function AddLiquidityForm() {
                 <input
                   type="number"
                   value={zeusAmount}
-                  onChange={(e) => setZeusAmount(e.target.value)}
+                  onChange={(e) => { const v = e.target.value; if (v === "" || parseFloat(v) >= 0) setZeusAmount(v) }}
                   placeholder="0.0"
+                  min="0"
                   step="0.01"
                   className={`input-zeus ${hasInsufficientZeus ? "error" : ""}`}
                   style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
