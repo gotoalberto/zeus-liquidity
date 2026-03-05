@@ -1,12 +1,5 @@
 "use client"
 
-/**
- * RangeSelector Component
- *
- * MCAP-based range selector - THE KEY DIFFERENTIATING FEATURE
- * Users define liquidity ranges by market cap milestones, not raw prices
- */
-
 import { useState, useEffect } from "react"
 import { PriceRange } from "@/types"
 import { mcapToTick, tickToMcap, tickToZeusEthPrice, getPresetRange } from "@/lib/uniswap/mcap"
@@ -77,11 +70,8 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
 
   if (!priceData || !ethPriceUsd) {
     return (
-      <div
-        className="p-5 rounded-2xl"
-        style={{ background: "#d4e8ff", border: "2px solid #000" }}
-      >
-        <p className="font-bold text-gray-600">Loading market data...</p>
+      <div style={{ padding: "1.25rem", borderRadius: "1rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <p style={{ fontWeight: 600, color: "var(--text-muted)" }}>Loading market data...</p>
       </div>
     )
   }
@@ -92,22 +82,19 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
   const isOutOfRange = minMcapNum > 0 && maxMcapNum > 0 && (currentMcap < minMcapNum || currentMcap > maxMcapNum)
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       {/* Current Market Cap */}
-      <div
-        className="rounded-xl p-4"
-        style={{ background: "#f0e64e", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
-      >
-        <p className="text-xs uppercase tracking-widest mb-1 font-bold text-black/60">Current Market Cap</p>
-        <p className="text-2xl font-bold" style={{ fontFamily: "var(--font-titan-one)" }}>
+      <div style={{ background: "rgba(240,230,78,0.08)", border: "1px solid rgba(240,230,78,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem" }}>
+        <p style={{ fontSize: "0.62rem", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "rgba(240,230,78,0.5)", marginBottom: "0.3rem" }}>Current Market Cap</p>
+        <p style={{ fontFamily: "var(--font-display)", fontSize: "1.7rem", color: "var(--yellow)" }}>
           {formatCurrency(currentMcap)}
         </p>
       </div>
 
       {/* Preset Buttons */}
       <div>
-        <p className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-3">Presets</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.75rem" }}>Presets</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "0.5rem" }}>
           {[
             { key: "conservative" as const, label: "Conservative", range: "80% – 300%" },
             { key: "moderate" as const, label: "Moderate", range: "50% – 1000%" },
@@ -116,24 +103,38 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
             <button
               key={key}
               onClick={() => applyPreset(key)}
-              className="px-3 py-3 rounded-xl text-sm font-bold text-center transition-all hover:-translate-y-0.5"
               style={{
-                background: "#d4e8ff",
-                border: "2px solid #000",
-                boxShadow: "3px 3px 0 #000",
+                padding: "0.65rem 0.75rem",
+                borderRadius: "0.75rem",
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                textAlign: "center",
+                cursor: "pointer",
+                transition: "all 0.15s",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "var(--text-secondary)",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = "rgba(67,148,244,0.1)"
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(67,148,244,0.3)"
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)"
               }}
             >
               {label}
-              <span className="block text-xs font-mono text-gray-600 mt-1">{range}</span>
+              <span style={{ display: "block", fontSize: "0.68rem", fontFamily: "monospace", color: "var(--text-muted)", marginTop: "0.2rem" }}>{range}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* MCAP Inputs */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-widest text-gray-600">Min Market Cap (USD)</label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <label style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>Min Market Cap (USD)</label>
           <input
             type="number"
             value={minMcap}
@@ -142,14 +143,14 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
             className="input-zeus"
           />
           {minMcapNum > 0 && (
-            <p className="text-xs font-bold text-gray-500 font-mono">
+            <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-muted)", fontFamily: "monospace" }}>
               {formatCurrency(minMcapNum)}
             </p>
           )}
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-widest text-gray-600">Max Market Cap (USD)</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <label style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>Max Market Cap (USD)</label>
           <input
             type="number"
             value={maxMcap}
@@ -158,7 +159,7 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
             className="input-zeus"
           />
           {maxMcapNum > 0 && (
-            <p className="text-xs font-bold text-gray-500 font-mono">
+            <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-muted)", fontFamily: "monospace" }}>
               {formatCurrency(maxMcapNum)}
             </p>
           )}
@@ -167,53 +168,40 @@ export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
 
       {/* Validation Warning */}
       {minMcapNum > 0 && maxMcapNum > 0 && minMcapNum >= maxMcapNum && (
-        <div
-          className="rounded-xl p-3 text-sm font-bold"
-          style={{ background: "#ffeeee", border: "2px solid #ff4444", color: "#ff4444" }}
-        >
+        <div style={{ borderRadius: "0.75rem", padding: "0.75rem 1rem", fontSize: "0.85rem", fontWeight: 700, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }}>
           Min market cap must be less than max market cap
         </div>
       )}
 
       {/* Out of Range Warning */}
       {isOutOfRange && (
-        <div
-          className="rounded-xl p-3 text-sm font-bold"
-          style={{ background: "#fff3cc", border: "2px solid #ff8800", color: "#885500" }}
-        >
+        <div style={{ borderRadius: "0.75rem", padding: "0.75rem 1rem", fontSize: "0.85rem", fontWeight: 700, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c" }}>
           Current price is outside your selected range. Price must move into range to earn fees.
         </div>
       )}
 
       {/* Advanced Details */}
       {minMcapNum > 0 && maxMcapNum > 0 && minMcapNum < maxMcapNum && (
-        <details className="group" open={showAdvanced}>
+        <details open={showAdvanced}>
           <summary
-            className="cursor-pointer text-sm font-bold text-gray-500 hover:text-black transition-colors list-none flex items-center gap-2 select-none"
-            onClick={(e) => {
-              e.preventDefault()
-              setShowAdvanced(!showAdvanced)
-            }}
+            style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)", listStyle: "none", display: "flex", alignItems: "center", gap: "0.4rem", userSelect: "none" }}
+            onClick={(e) => { e.preventDefault(); setShowAdvanced(!showAdvanced) }}
           >
-            <span className={`transition-transform inline-block ${showAdvanced ? "rotate-90" : ""}`}>▶</span>
+            <span style={{ fontSize: "0.55rem", transition: "transform 0.2s", transform: showAdvanced ? "rotate(90deg)" : "none", display: "inline-block" }}>▶</span>
             Advanced Details
           </summary>
-          <div
-            className="mt-3 space-y-2 text-sm rounded-xl p-4"
-            style={{ background: "#d4e8ff", border: "2px solid #000" }}
-          >
-            <div className="flex justify-between">
-              <span className="font-bold text-gray-600">Tick Range:</span>
-              <span className="font-mono text-xs font-bold">
+          <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.8rem", background: "rgba(255,255,255,0.03)", borderRadius: "0.75rem", padding: "0.875rem 1rem", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Tick Range:</span>
+              <span style={{ fontFamily: "monospace", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
                 {mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)} –{" "}
                 {mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="font-bold text-gray-600">Price Range (ETH):</span>
-              <span className="font-mono text-xs font-bold">
-                {tickToZeusEthPrice(mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)).toFixed(8)}{" "}
-                –{" "}
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Price Range (ETH):</span>
+              <span style={{ fontFamily: "monospace", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
+                {tickToZeusEthPrice(mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)).toFixed(8)}{" "}–{" "}
                 {tickToZeusEthPrice(mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)).toFixed(8)}
               </span>
             </div>

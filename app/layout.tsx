@@ -57,13 +57,14 @@ export default function RootLayout({
             position="bottom-right"
             toastOptions={{
               style: {
-                background: "#ffffff",
-                border: "3px solid #000000",
-                color: "#000000",
-                boxShadow: "4px 4px 0px 0px #000000",
-                borderRadius: "1rem",
-                fontFamily: "Ubuntu, sans-serif",
+                background: "rgba(13, 21, 39, 0.96)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#ffffff",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                borderRadius: "0.875rem",
+                fontFamily: "Fredoka, system-ui, sans-serif",
                 fontWeight: "600",
+                backdropFilter: "blur(12px)",
               },
             }}
           />

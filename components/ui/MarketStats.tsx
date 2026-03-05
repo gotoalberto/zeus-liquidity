@@ -30,17 +30,19 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, sub, isPositive, accent = "default" }: StatCardProps) {
-  const accentBg = { yellow: "#f0e64e", blue: "#4394f4", green: "#22c55e", default: "#fff" }
-  const accentText = { yellow: "#000", blue: "#fff", green: "#fff", default: "#000" }
+  const accentColor = {
+    yellow: "var(--yellow)",
+    blue: "var(--blue-light)",
+    green: "#4ade80",
+    default: "rgba(255,255,255,0.6)",
+  }
 
   return (
-    <div className="card-zeus" style={{ padding: "1.25rem 1.5rem", minHeight: 110 }}>
-      <div style={{ background: accentBg[accent], border: "2px solid var(--black)", borderRadius: "0.5rem", padding: "0.2rem 0.6rem", display: "inline-block", marginBottom: "0.6rem", boxShadow: "2px 2px 0 var(--black)" }}>
-        <p style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: accentText[accent] }}>{label}</p>
-      </div>
-      <p style={{ fontFamily: "var(--font-display)", fontSize: "1.6rem", color: "#000", letterSpacing: "0.01em", lineHeight: 1, marginBottom: "0.35rem" }}>{value}</p>
+    <div className="stat-card" style={{ minHeight: 110 }}>
+      <p style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: accentColor[accent], marginBottom: "0.6rem" }}>{label}</p>
+      <p style={{ fontFamily: "var(--font-display)", fontSize: "1.65rem", color: "#fff", letterSpacing: "0.01em", lineHeight: 1, marginBottom: "0.4rem" }}>{value}</p>
       {sub && (
-        <p style={{ fontSize: "0.8rem", fontWeight: 700, color: isPositive === undefined ? "#666" : isPositive ? "#22c55e" : "#ef4444" }}>{sub}</p>
+        <p style={{ fontSize: "0.78rem", fontWeight: 600, color: isPositive === undefined ? "var(--text-muted)" : isPositive ? "#4ade80" : "#f87171" }}>{sub}</p>
       )}
     </div>
   )
@@ -51,8 +53,8 @@ export function MarketStats() {
 
   if (error) {
     return (
-      <div className="card-zeus" style={{ padding: "1rem" }}>
-        <p style={{ fontSize: "0.875rem", color: "#ef4444", fontWeight: 700 }}>Failed to load market data</p>
+      <div className="card-zeus" style={{ padding: "1.25rem" }}>
+        <p style={{ fontSize: "0.875rem", color: "#f87171", fontWeight: 700 }}>Failed to load market data</p>
       </div>
     )
   }
@@ -61,7 +63,7 @@ export function MarketStats() {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="card-zeus" style={{ padding: "1.25rem 1.5rem", minHeight: 110 }}>
+          <div key={i} className="stat-card" style={{ minHeight: 110 }}>
             <div className="skeleton" style={{ height: 12, width: 80, marginBottom: 12 }} />
             <div className="skeleton" style={{ height: 28, width: 110, marginBottom: 8 }} />
             <div className="skeleton" style={{ height: 12, width: 60 }} />

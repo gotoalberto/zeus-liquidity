@@ -121,10 +121,10 @@ export function AddLiquidityForm() {
   if (!isConnected) {
     return (
       <div style={{ padding: "3rem", textAlign: "center" }}>
-        <p style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", color: "#000", marginBottom: "0.5rem" }}>
+        <p style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", color: "var(--text-primary)", marginBottom: "0.5rem" }}>
           Connect your wallet to add liquidity
         </p>
-        <p style={{ fontSize: "0.875rem", color: "#666", fontWeight: 600 }}>Become a ZEUS LP and earn fees</p>
+        <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", fontWeight: 600 }}>Become a ZEUS LP and earn fees</p>
       </div>
     )
   }
@@ -146,89 +146,80 @@ export function AddLiquidityForm() {
     !hasInsufficientZeus
 
   return (
-    <div className="space-y-8">
+    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
       {/* Range Selector */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-4">
-          Select Range
-        </h3>
+        <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>Select Range</p>
         <RangeSelector onRangeChange={setSelectedRange} />
       </div>
 
-      <hr className="divider-zeus" />
+      <div className="divider" />
 
       {/* Amount Inputs */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-4">
-          Deposit Amounts
-        </h3>
-        <div className="space-y-4">
+        <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>Deposit Amounts</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {/* ETH Input */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold">⟠ ETH Amount</label>
-              <span className="text-xs text-muted-foreground font-mono">
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ETH Amount</label>
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
                 Balance: {ethBalanceNum.toFixed(6)} ETH
               </span>
             </div>
-            <div className="relative">
+            <div style={{ position: "relative" }}>
               <input
                 type="number"
                 value={ethAmount}
                 onChange={(e) => setEthAmount(e.target.value)}
                 placeholder="0.0"
                 step="0.01"
-                className={`input-zeus text-lg pr-16 ${hasInsufficientEth ? "error" : ""}`}
+                className={`input-zeus ${hasInsufficientEth ? "error" : ""}`}
+                style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
               />
               <button
                 onClick={() => setEthAmount((ethBalanceNum * 0.99).toFixed(6))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-primary/15 text-primary text-xs rounded-md font-bold hover:bg-primary/25 transition-colors"
+                style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", padding: "0.2rem 0.5rem", background: "rgba(67,148,244,0.15)", border: "1px solid rgba(67,148,244,0.3)", color: "var(--blue-light)", fontSize: "0.65rem", borderRadius: "9999px", fontWeight: 700, cursor: "pointer" }}
               >
                 MAX
               </button>
             </div>
-            {hasInsufficientEth && (
-              <p className="text-xs text-destructive">Insufficient ETH balance</p>
-            )}
+            {hasInsufficientEth && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ETH balance</p>}
           </div>
 
           {/* ZEUS Input */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold">ZEUS Amount</label>
-              <span className="text-xs text-muted-foreground font-mono">
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ZEUS Amount</label>
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
                 Balance: {zeusBalanceNum.toFixed(4)} ZEUS
               </span>
             </div>
-            <div className="relative">
+            <div style={{ position: "relative" }}>
               <input
                 type="number"
                 value={zeusAmount}
                 onChange={(e) => setZeusAmount(e.target.value)}
                 placeholder="0.0"
                 step="0.01"
-                className={`input-zeus text-lg pr-16 ${hasInsufficientZeus ? "error" : ""}`}
+                className={`input-zeus ${hasInsufficientZeus ? "error" : ""}`}
+                style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
               />
               <button
                 onClick={() => setZeusAmount(zeusBalanceNum.toFixed(4))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-primary/15 text-primary text-xs rounded-md font-bold hover:bg-primary/25 transition-colors"
+                style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", padding: "0.2rem 0.5rem", background: "rgba(67,148,244,0.15)", border: "1px solid rgba(67,148,244,0.3)", color: "var(--blue-light)", fontSize: "0.65rem", borderRadius: "9999px", fontWeight: 700, cursor: "pointer" }}
               >
                 MAX
               </button>
             </div>
-            {hasInsufficientZeus && (
-              <p className="text-xs text-destructive">Insufficient ZEUS balance</p>
-            )}
+            {hasInsufficientZeus && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ZEUS balance</p>}
           </div>
 
           {/* Estimated USD Value */}
           {ethAmountNum > 0 && zeusAmountNum > 0 && priceData && ethPriceUsd && (
-            <div
-              className="rounded-xl p-4"
-              style={{ background: "#3bff8a", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }}
-            >
-              <p className="text-xs uppercase tracking-widest mb-1 font-bold text-black/60">Total Value</p>
-              <p className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+            <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.75rem", padding: "1rem" }}>
+              <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, color: "rgba(74,222,128,0.6)", marginBottom: "0.3rem" }}>Total Value</p>
+              <p style={{ fontFamily: "var(--font-display)", fontSize: "1.8rem", color: "#4ade80" }}>
                 ${(ethAmountNum * ethPriceUsd + zeusAmountNum * priceData.priceUsd).toFixed(2)}
               </p>
             </div>
@@ -236,26 +227,27 @@ export function AddLiquidityForm() {
         </div>
       </div>
 
-      <hr className="divider-zeus" />
+      <div className="divider" />
 
       {/* Slippage Tolerance */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">
-          Slippage Tolerance
-        </h3>
-        <div className="flex gap-2 flex-wrap">
+        <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.75rem" }}>Slippage Tolerance</p>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           {[0.1, 0.5, 1.0].map((value) => (
             <button
               key={value}
-              onClick={() => {
-                setSlippage(value)
-                setCustomSlippage("")
+              onClick={() => { setSlippage(value); setCustomSlippage("") }}
+              style={{
+                padding: "0.35rem 1rem",
+                borderRadius: "9999px",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.15s",
+                background: slippage === value && !customSlippage ? "rgba(240,230,78,0.15)" : "rgba(255,255,255,0.04)",
+                border: slippage === value && !customSlippage ? "1px solid rgba(240,230,78,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                color: slippage === value && !customSlippage ? "var(--yellow)" : "var(--text-secondary)",
               }}
-              className="px-4 py-2 rounded-2xl text-sm font-bold transition-all"
-              style={slippage === value && !customSlippage
-                ? { background: "#f0e64e", border: "2px solid #000", boxShadow: "3px 3px 0 #000" }
-                : { background: "#d4e8ff", border: "2px solid #000", boxShadow: "2px 2px 0 #000" }
-              }
             >
               {value}%
             </button>
@@ -269,19 +261,20 @@ export function AddLiquidityForm() {
               if (value > 0 && value <= 50) setSlippage(value)
             }}
             placeholder="Custom %"
-            className="input-zeus text-sm w-28"
+            className="input-zeus"
+            style={{ fontSize: "0.85rem", width: "7rem" }}
           />
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="space-y-3">
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
         {!isApproved ? (
           <button
             onClick={handleApprove}
             disabled={!isFormValid || isApproving}
-            className="btn-zeus w-full py-4"
-            style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}
+            className="btn-zeus"
+            style={{ width: "100%", fontSize: "1rem", padding: "0.9rem" }}
           >
             {isApproving ? "Approving ZEUS..." : "Approve ZEUS"}
           </button>
@@ -289,22 +282,16 @@ export function AddLiquidityForm() {
           <button
             onClick={handleAddLiquidity}
             disabled={!isFormValid || isAdding}
-            className="btn-zeus w-full py-4"
-            style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}
+            className="btn-zeus"
+            style={{ width: "100%", fontSize: "1rem", padding: "0.9rem" }}
           >
             {isAdding ? "Adding Liquidity..." : "Add Liquidity"}
           </button>
         )}
 
         {!isFormValid && (
-          <p className="text-xs text-center font-bold text-gray-500">
-            {!selectedRange
-              ? "Select a price range above"
-              : !ethAmount || !zeusAmount
-              ? "Enter token amounts"
-              : hasInsufficientEth || hasInsufficientZeus
-              ? "Insufficient balance"
-              : "Fill all fields"}
+          <p style={{ fontSize: "0.72rem", textAlign: "center", fontWeight: 600, color: "var(--text-muted)" }}>
+            {!selectedRange ? "Select a price range above" : !ethAmount || !zeusAmount ? "Enter token amounts" : hasInsufficientEth || hasInsufficientZeus ? "Insufficient balance" : "Fill all fields"}
           </p>
         )}
       </div>

@@ -29,10 +29,8 @@ export function SplashScreen() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#4BBFE0",
-        backgroundImage: "url('/bg-squiggle.png')",
-        backgroundSize: "300px 300px",
-        backgroundRepeat: "repeat",
+        backgroundColor: "#0a0f1e",
+        backgroundImage: "radial-gradient(ellipse 70% 50% at 50% 30%, rgba(67, 148, 244, 0.18) 0%, transparent 60%)",
         opacity: fading ? 0 : 1,
         transition: "opacity 0.6s ease",
         pointerEvents: fading ? "none" : "all",
@@ -78,8 +76,8 @@ export function SplashScreen() {
             height: 140,
             borderRadius: "50%",
             overflow: "hidden",
-            border: "4px solid #000",
-            boxShadow: "6px 6px 0 #000",
+            border: "2px solid rgba(240,230,78,0.4)",
+            boxShadow: "0 0 30px rgba(67,148,244,0.4)",
           }}
         >
           <Image
@@ -99,9 +97,9 @@ export function SplashScreen() {
           style={{
             fontFamily: "var(--font-titan-one)",
             fontSize: "clamp(3rem, 14vw, 5rem)",
-            color: "#ffffff",
-            WebkitTextStroke: "4px #000",
-            textShadow: "5px 5px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000",
+            color: "#f0e64e",
+            WebkitTextStroke: "2px rgba(240,230,78,0.3)",
+            textShadow: "0 0 40px rgba(240,230,78,0.35), 0 0 80px rgba(240,230,78,0.15)",
             lineHeight: 1,
             letterSpacing: "0.05em",
           }}
@@ -135,9 +133,8 @@ export function SplashScreen() {
               width: 12,
               height: 12,
               borderRadius: "50%",
-              background: "#FFE600",
-              border: "2px solid #000",
-              boxShadow: "2px 2px 0 #000",
+              background: "var(--yellow)",
+              boxShadow: "0 0 8px rgba(240,230,78,0.5)",
             }}
           />
         ))}

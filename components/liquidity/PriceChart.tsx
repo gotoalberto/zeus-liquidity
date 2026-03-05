@@ -37,22 +37,22 @@ export function PriceChart() {
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#000",
+        textColor: "rgba(255,255,255,0.5)",
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: "rgba(0,0,0,0.07)" },
-        horzLines: { color: "rgba(0,0,0,0.07)" },
+        vertLines: { color: "rgba(255,255,255,0.04)" },
+        horzLines: { color: "rgba(255,255,255,0.04)" },
       },
       width: chartContainerRef.current.clientWidth,
       height: 400,
       timeScale: {
-        borderColor: "rgba(0,0,0,0.2)",
+        borderColor: "rgba(255,255,255,0.08)",
         timeVisible: true,
         secondsVisible: false,
       },
       rightPriceScale: {
-        borderColor: "rgba(0,0,0,0.2)",
+        borderColor: "rgba(255,255,255,0.08)",
         visible: true,
         scaleMargins: { top: 0.1, bottom: 0.1 },
         minimumWidth: 90,
@@ -61,8 +61,8 @@ export function PriceChart() {
         priceFormatter: (price: number) => formatMcap(price),
       },
       crosshair: {
-        vertLine: { color: "rgba(0,0,0,0.3)", width: 1, style: 3 },
-        horzLine: { color: "rgba(0,0,0,0.3)", width: 1, style: 3 },
+        vertLine: { color: "rgba(67,148,244,0.5)", width: 1, style: 3 },
+        horzLine: { color: "rgba(67,148,244,0.5)", width: 1, style: 3 },
       },
     })
 
@@ -133,31 +133,30 @@ export function PriceChart() {
             onClick={() => setSelectedTimeframe(tf)}
             style={{
               fontFamily: "var(--font-display)",
-              fontSize: "0.8rem",
-              padding: "0.3rem 0.8rem",
-              borderRadius: "0.4rem",
-              border: "2px solid var(--black)",
+              fontSize: "0.78rem",
+              padding: "0.3rem 0.85rem",
+              borderRadius: "9999px",
+              border: selectedTimeframe.value === tf.value ? "1px solid rgba(240,230,78,0.5)" : "1px solid rgba(255,255,255,0.12)",
               cursor: "pointer",
-              transition: "all 0.1s",
-              background: selectedTimeframe.value === tf.value ? "var(--yellow)" : "#f5f5f5",
-              color: "var(--black)",
-              boxShadow: selectedTimeframe.value === tf.value ? "2px 2px 0 var(--black)" : "1px 1px 0 var(--black)",
+              transition: "all 0.15s",
+              background: selectedTimeframe.value === tf.value ? "rgba(240,230,78,0.15)" : "rgba(255,255,255,0.04)",
+              color: selectedTimeframe.value === tf.value ? "var(--yellow)" : "rgba(255,255,255,0.5)",
             }}
           >
             {tf.label}
           </button>
         ))}
-        <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: 600, marginLeft: "0.5rem" }}>
+        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600, marginLeft: "0.5rem" }}>
           Market Cap (USD)
         </span>
       </div>
 
       {/* Chart */}
-      <div style={{ position: "relative", width: "100%", height: 400, borderRadius: "0.75rem", overflow: "hidden", border: "2px solid rgba(0,0,0,0.1)" }}>
+      <div style={{ position: "relative", width: "100%", height: 400, borderRadius: "0.75rem", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" }}>
         {isLoading && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.8)", backdropFilter: "blur(4px)", zIndex: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#666", fontSize: "0.875rem", fontWeight: 600 }}>
-              <div style={{ width: 16, height: 16, border: "3px solid var(--black)", borderTopColor: "var(--yellow)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(10,15,30,0.8)", backdropFilter: "blur(8px)", zIndex: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "rgba(255,255,255,0.5)", fontSize: "0.875rem", fontWeight: 600 }}>
+              <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.1)", borderTopColor: "var(--yellow)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
               Loading chart...
             </div>
           </div>
