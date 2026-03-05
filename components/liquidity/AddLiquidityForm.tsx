@@ -51,42 +51,86 @@ const POSITION_MANAGER_ABI = [
   },
 ] as const
 
-// Actions.sol constants
-// MINT_POSITION_FROM_DELTAS (0x05): computes liquidity automatically from token amounts + current sqrtPrice
-// No need to calculate liquidity offchain — the contract uses getLiquidityForAmounts internally
+// Actions.sol constants (confirmed from on-chain tx 0x42ee2ecabc3c...)
 const ACTIONS = {
-  MINT_POSITION_FROM_DELTAS: 0x05,
+  MINT_POSITION: 0x02,
   SETTLE_PAIR: 0x0d,
+  SWEEP: 0x14,
 } as const
 
+// Magic address meaning "msg.sender" in V4 PositionManager
+const MSG_SENDER = "0x0000000000000000000000000000000000000001" as const
+
 /**
- * Encode unlockData for MINT_POSITION_FROM_DELTAS + SETTLE_PAIR
+ * Compute sqrtPriceX96 from a tick.
+ * sqrtPriceX96 = sqrt(1.0001^tick) * 2^96
+ */
+function tickToSqrtPriceX96(tick: number): bigint {
+  const price = Math.pow(1.0001, tick)
+  const sqrtPrice = Math.sqrt(price)
+  return BigInt(Math.floor(sqrtPrice * 2 ** 96))
+}
+
+/**
+ * Compute Uniswap V3/V4 liquidity from token amounts and price range.
+ * Uses getLiquidityForAmounts formula.
  *
- * MINT_POSITION_FROM_DELTAS params: (poolKey, tickLower, tickUpper, amount0Max, amount1Max, minLiquidity, recipient, hookData)
- * - amount0Max / amount1Max: max tokens to spend (slippage cap)
- * - minLiquidity: min liquidity to receive (set to 0 for no lower bound)
- * - The contract reads current sqrtPrice and calls getLiquidityForAmounts internally
+ * Returns the maximum liquidity that can be provided given amount0 and amount1,
+ * given current sqrtPrice and the range [sqrtPriceLower, sqrtPriceUpper].
+ */
+function getLiquidityForAmounts(
+  sqrtPriceX96: bigint,
+  sqrtPriceLowerX96: bigint,
+  sqrtPriceUpperX96: bigint,
+  amount0: bigint,
+  amount1: bigint,
+): bigint {
+  const Q96 = 2n ** 96n
+
+  if (sqrtPriceX96 <= sqrtPriceLowerX96) {
+    // Current price below range — only token0 (ETH) needed
+    if (sqrtPriceLowerX96 === sqrtPriceUpperX96) return 0n
+    return (amount0 * sqrtPriceLowerX96 * sqrtPriceUpperX96 / Q96) /
+      (sqrtPriceUpperX96 - sqrtPriceLowerX96)
+  } else if (sqrtPriceX96 < sqrtPriceUpperX96) {
+    // Current price in range — both tokens needed
+    const liq0 = (amount0 * sqrtPriceX96 * sqrtPriceUpperX96 / Q96) /
+      (sqrtPriceUpperX96 - sqrtPriceX96)
+    const liq1 = amount1 * Q96 / (sqrtPriceX96 - sqrtPriceLowerX96)
+    return liq0 < liq1 ? liq0 : liq1
+  } else {
+    // Current price above range — only token1 (ZEUS) needed
+    if (sqrtPriceLowerX96 === sqrtPriceUpperX96) return 0n
+    return amount1 * Q96 / (sqrtPriceUpperX96 - sqrtPriceLowerX96)
+  }
+}
+
+/**
+ * Encode unlockData for MINT_POSITION + SETTLE_PAIR + SWEEP
+ * Confirmed pattern from on-chain tx 0x42ee2ecabc3c1e85f7bd9e5427bd9f2f3cf94b67648db9fea3d1cae63922fe50
  *
- * SETTLE_PAIR params: (currency0, currency1) — contract reads full debt automatically
+ * MINT_POSITION params: (PoolKey, tickLower, tickUpper, uint256 liquidity, uint128 amount0Max, uint128 amount1Max, address owner, bytes hookData)
+ * SETTLE_PAIR params: (currency0, currency1)
+ * SWEEP params: (currency, address) — sweeps leftover ETH back to msg.sender
  *
  * unlockData = abi.encode(bytes actions, bytes[] params)
  */
 function encodeMintUnlockData({
   currency0, currency1, fee, tickSpacing, hooks,
-  tickLower, tickUpper, amount0Max, amount1Max, recipient,
+  tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient,
 }: {
   currency0: `0x${string}`; currency1: `0x${string}`; fee: number
   tickSpacing: number; hooks: `0x${string}`; tickLower: number; tickUpper: number
-  amount0Max: bigint; amount1Max: bigint; recipient: `0x${string}`
+  liquidity: bigint; amount0Max: bigint; amount1Max: bigint; recipient: `0x${string}`
 }): `0x${string}` {
-  // actions: [MINT_POSITION_FROM_DELTAS, SETTLE_PAIR] packed as bytes
+  // actions: [MINT_POSITION, SETTLE_PAIR, SWEEP] packed as bytes
   const actions = encodePacked(
-    ["uint8", "uint8"],
-    [ACTIONS.MINT_POSITION_FROM_DELTAS, ACTIONS.SETTLE_PAIR]
+    ["uint8", "uint8", "uint8"],
+    [ACTIONS.MINT_POSITION, ACTIONS.SETTLE_PAIR, ACTIONS.SWEEP]
   )
 
-  // params[0]: MINT_POSITION_FROM_DELTAS params
-  // Signature: (PoolKey poolKey, int24 tickLower, int24 tickUpper, uint128 amount0Max, uint128 amount1Max, address owner, bytes hookData)
+  // params[0]: MINT_POSITION params
+  // (PoolKey poolKey, int24 tickLower, int24 tickUpper, uint256 liquidity, uint128 amount0Max, uint128 amount1Max, address owner, bytes hookData)
   const mintParams = encodeAbiParameters(
     [
       { type: "tuple", components: [
@@ -98,24 +142,31 @@ function encodeMintUnlockData({
       ]},
       { type: "int24" },   // tickLower
       { type: "int24" },   // tickUpper
-      { type: "uint128" }, // amount0Max
-      { type: "uint128" }, // amount1Max
+      { type: "uint256" }, // liquidity (actual delta, computed offchain)
+      { type: "uint128" }, // amount0Max (slippage cap)
+      { type: "uint128" }, // amount1Max (slippage cap)
       { type: "address" }, // owner/recipient
       { type: "bytes" },   // hookData
     ],
-    [{ currency0, currency1, fee, tickSpacing, hooks }, tickLower, tickUpper, amount0Max, amount1Max, recipient, "0x"]
+    [{ currency0, currency1, fee, tickSpacing, hooks }, tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient, "0x"]
   )
 
-  // params[1]: SETTLE_PAIR params
+  // params[1]: SETTLE_PAIR params — settles full outstanding debt for both currencies
   const settleParams = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }],
     [currency0, currency1]
   )
 
+  // params[2]: SWEEP params — refund leftover native ETH to msg.sender
+  const sweepParams = encodeAbiParameters(
+    [{ type: "address" }, { type: "address" }],
+    [currency0, MSG_SENDER]
+  )
+
   // unlockData = abi.encode(actions, params)
   return encodeAbiParameters(
     [{ type: "bytes" }, { type: "bytes[]" }],
-    [actions, [mintParams, settleParams]]
+    [actions, [mintParams, settleParams, sweepParams]]
   )
 }
 
@@ -267,6 +318,14 @@ export function AddLiquidityForm() {
     const amount0Max = ethAmountRaw
     const amount1Max = zeusAmountRawBig
 
+    // Compute liquidity from amounts using current price
+    const currentTickForCalc = currentTick ?? 0
+    const sqrtPriceCurrent = tickToSqrtPriceX96(currentTickForCalc)
+    const sqrtPriceLower = tickToSqrtPriceX96(tLower)
+    const sqrtPriceUpper = tickToSqrtPriceX96(tUpper)
+    const liquidity = getLiquidityForAmounts(sqrtPriceCurrent, sqrtPriceLower, sqrtPriceUpper, amount0Max, amount1Max)
+    if (liquidity === 0n) { toast.error("Could not compute liquidity — check amounts"); return }
+
     const unlockData = encodeMintUnlockData({
       currency0: ETH_ADDRESS,
       currency1: ZEUS_TOKEN_ADDRESS as `0x${string}`,
@@ -275,6 +334,7 @@ export function AddLiquidityForm() {
       hooks: POOL_HOOKS_ADDRESS as `0x${string}`,
       tickLower: tLower,
       tickUpper: tUpper,
+      liquidity,
       amount0Max,
       amount1Max,
       recipient: address,
