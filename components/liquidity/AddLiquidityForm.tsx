@@ -20,7 +20,7 @@
 
 import { useState, useEffect } from "react"
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi"
-import { parseUnits, formatUnits, erc20Abi, maxUint256, parseEther } from "viem"
+import { parseUnits, formatUnits, erc20Abi, maxUint256, parseEther, encodeAbiParameters, encodePacked } from "viem"
 import { RangeSelector } from "./RangeSelector"
 import { PriceRange } from "@/types"
 import {
@@ -37,53 +37,78 @@ import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 import { mcapToTick } from "@/lib/uniswap/mcap"
 import { toast } from "sonner"
 
-// Uniswap V4 PositionManager ABI (minimal — mint via multicall)
+// Uniswap V4 PositionManager — modifyLiquidities is the correct entry point
 const POSITION_MANAGER_ABI = [
   {
-    name: "multicall",
-    type: "function",
-    stateMutability: "payable",
-    inputs: [{ name: "deadline", type: "uint256" }, { name: "data", type: "bytes[]" }],
-    outputs: [{ name: "results", type: "bytes[]" }],
-  },
-  {
-    name: "mint",
+    name: "modifyLiquidities",
     type: "function",
     stateMutability: "payable",
     inputs: [
-      {
-        name: "params",
-        type: "tuple",
-        components: [
-          {
-            name: "poolKey",
-            type: "tuple",
-            components: [
-              { name: "currency0", type: "address" },
-              { name: "currency1", type: "address" },
-              { name: "fee", type: "uint24" },
-              { name: "tickSpacing", type: "int24" },
-              { name: "hooks", type: "address" },
-            ],
-          },
-          { name: "tickLower", type: "int24" },
-          { name: "tickUpper", type: "int24" },
-          { name: "liquidity", type: "uint128" },
-          { name: "amount0Max", type: "uint128" },
-          { name: "amount1Max", type: "uint128" },
-          { name: "recipient", type: "address" },
-          { name: "hookData", type: "bytes" },
-        ],
-      },
+      { name: "unlockData", type: "bytes" },
+      { name: "deadline", type: "uint256" },
     ],
-    outputs: [
-      { name: "tokenId", type: "uint256" },
-      { name: "liquidity", type: "uint128" },
-      { name: "amount0", type: "uint256" },
-      { name: "amount1", type: "uint256" },
-    ],
+    outputs: [],
   },
 ] as const
+
+// Actions.sol constants
+const ACTIONS = {
+  MINT_POSITION: 0x02,
+  SETTLE_PAIR: 0x0d,
+  SWEEP: 0x14,
+} as const
+
+/**
+ * Encode unlockData for a MINT_POSITION + SETTLE_PAIR call
+ * unlockData = abi.encode(bytes actions, bytes[] params)
+ * actions = packed bytes of action codes
+ * params[0] = abi.encode(poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient, hookData)
+ * params[1] = abi.encode(currency0, currency1)  -- for SETTLE_PAIR
+ */
+function encodeMintUnlockData({
+  currency0, currency1, fee, tickSpacing, hooks,
+  tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient,
+}: {
+  currency0: `0x${string}`; currency1: `0x${string}`; fee: number
+  tickSpacing: number; hooks: `0x${string}`; tickLower: number; tickUpper: number
+  liquidity: bigint; amount0Max: bigint; amount1Max: bigint; recipient: `0x${string}`
+}): `0x${string}` {
+  // actions: [MINT_POSITION, SETTLE_PAIR] packed as bytes
+  const actions = encodePacked(["uint8", "uint8"], [ACTIONS.MINT_POSITION, ACTIONS.SETTLE_PAIR])
+
+  // params[0]: MINT_POSITION params
+  const mintParams = encodeAbiParameters(
+    [
+      { type: "tuple", components: [
+        { name: "currency0", type: "address" },
+        { name: "currency1", type: "address" },
+        { name: "fee", type: "uint24" },
+        { name: "tickSpacing", type: "int24" },
+        { name: "hooks", type: "address" },
+      ]},
+      { type: "int24" }, // tickLower
+      { type: "int24" }, // tickUpper
+      { type: "uint256" }, // liquidity
+      { type: "uint128" }, // amount0Max
+      { type: "uint128" }, // amount1Max
+      { type: "address" }, // recipient
+      { type: "bytes" },   // hookData
+    ],
+    [{ currency0, currency1, fee, tickSpacing, hooks }, tickLower, tickUpper, liquidity, amount0Max, amount1Max, recipient, "0x"]
+  )
+
+  // params[1]: SETTLE_PAIR params (currency0, currency1)
+  const settleParams = encodeAbiParameters(
+    [{ type: "address" }, { type: "address" }],
+    [currency0, currency1]
+  )
+
+  // unlockData = abi.encode(actions, params)
+  return encodeAbiParameters(
+    [{ type: "bytes" }, { type: "bytes[]" }],
+    [actions, [mintParams, settleParams]]
+  )
+}
 
 const ETH_ADDRESS = "0x0000000000000000000000000000000000000000" as const
 
@@ -223,39 +248,41 @@ export function AddLiquidityForm() {
 
     const tLower = Math.min(selectedRange.minTick, selectedRange.maxTick)
     const tUpper = Math.max(selectedRange.minTick, selectedRange.maxTick)
-    const slippageFactor = 1 - slippage / 100
 
-    const ethAmountRaw = needsEth ? parseEther(ethAmountNum.toFixed(18)) : 0n
+    const ethAmountRaw = needsEth && ethAmountNum > 0 ? parseEther(ethAmountNum.toFixed(18)) : 0n
     const zeusAmountRawBig = needsZeus && zeusAmountNum > 0 ? parseUnits(zeusAmountNum.toFixed(ZEUS_DECIMALS), ZEUS_DECIMALS) : 0n
 
-    const amount0Max = ethAmountRaw > 0n ? ethAmountRaw : 0n
-    const amount1Max = zeusAmountRawBig > 0n ? zeusAmountRawBig : 0n
+    // Apply slippage: amount0Max and amount1Max are the max the user is willing to spend
+    // We pass the full amounts (no slippage reduction) as max — the contract takes only what it needs
+    // The liquidity field uses type(uint128).max to let the contract compute the actual liquidity
+    const amount0Max = ethAmountRaw
+    const amount1Max = zeusAmountRawBig
 
-    // Estimate liquidity — use a large value and let the contract cap it
-    // The contract will use the smaller of the two ratios
-    const liquidityEstimate = 1000000000000000000n // placeholder — contract will compute actual
+    // Use max uint128 as liquidity — V4 PositionManager interprets this as "use all provided tokens"
+    const liquidityMax = (2n ** 128n) - 1n
+
+    const unlockData = encodeMintUnlockData({
+      currency0: ETH_ADDRESS,
+      currency1: ZEUS_TOKEN_ADDRESS as `0x${string}`,
+      fee: POOL_FEE,
+      tickSpacing: POOL_TICK_SPACING,
+      hooks: POOL_HOOKS_ADDRESS as `0x${string}`,
+      tickLower: tLower,
+      tickUpper: tUpper,
+      liquidity: liquidityMax,
+      amount0Max,
+      amount1Max,
+      recipient: address,
+    })
+
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200)
 
     writeMint({
       address: UNISWAP_V4_POSITION_MANAGER as `0x${string}`,
       abi: POSITION_MANAGER_ABI,
-      functionName: "mint",
+      functionName: "modifyLiquidities",
       value: ethAmountRaw,
-      args: [{
-        poolKey: {
-          currency0: ETH_ADDRESS,
-          currency1: ZEUS_TOKEN_ADDRESS as `0x${string}`,
-          fee: POOL_FEE,
-          tickSpacing: POOL_TICK_SPACING,
-          hooks: POOL_HOOKS_ADDRESS as `0x${string}`,
-        },
-        tickLower: tLower,
-        tickUpper: tUpper,
-        liquidity: liquidityEstimate,
-        amount0Max: amount0Max,
-        amount1Max: amount1Max,
-        recipient: address,
-        hookData: "0x" as `0x${string}`,
-      }],
+      args: [unlockData, deadline],
     }, {
       onError: (err) => toast.error(`Transaction failed: ${err.message.slice(0, 80)}`),
     })
