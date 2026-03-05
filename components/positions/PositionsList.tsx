@@ -64,8 +64,6 @@ export function PositionsList() {
           position={position}
           ethPriceUsd={eth}
           zeusPriceUsd={zeus}
-          onCollectFees={(tokenId) => console.log("Collect fees", tokenId)}
-          onClosePosition={(tokenId) => console.log("Close position", tokenId)}
         />
       ))}
     </div>
