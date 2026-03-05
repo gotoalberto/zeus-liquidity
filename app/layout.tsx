@@ -3,7 +3,6 @@ import { Fredoka, Titan_One } from "next/font/google"
 import "./globals.css"
 import { Web3Provider } from "@/providers/Web3Provider"
 import { Toaster } from "sonner"
-import { SplashScreen } from "@/components/ui/SplashScreen"
 
 const fredoka = Fredoka({
   variable: "--font-fredoka",
@@ -51,7 +50,6 @@ export default function RootLayout({
         className={`${fredoka.variable} ${titanOne.variable} antialiased`}
       >
         <Web3Provider>
-          <SplashScreen />
           {children}
           <Toaster
             position="bottom-right"

@@ -24,7 +24,7 @@ export default function Home() {
         <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 1.5rem", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 
           <a href="/" style={{ display: "flex", alignItems: "center", gap: "0.55rem", textDecoration: "none" }}>
-            <span style={{ fontFamily: "var(--font-display)", fontSize: "0.95rem", color: "#fff", letterSpacing: "0.02em" }}>earn.pepes.dog</span>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: "1rem", fontWeight: 700, color: "#fff", letterSpacing: "0.01em" }}>earn.pepes.dog</span>
           </a>
 
           <nav className="hidden md:flex" style={{ alignItems: "center", gap: "0.1rem" }}>
@@ -189,7 +189,7 @@ export default function Home() {
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1.5rem", marginBottom: "2rem" }}>
             <a href="/" style={{ display: "flex", alignItems: "center", gap: "0.6rem", textDecoration: "none" }}>
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: "0.9rem", color: "#fff" }}>earn.pepes.dog</div>
+                <div style={{ fontFamily: "var(--font-body)", fontSize: "1rem", fontWeight: 700, color: "#fff" }}>earn.pepes.dog</div>
                 <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 500 }}>ZEUS Liquidity Manager</div>
               </div>
             </a>

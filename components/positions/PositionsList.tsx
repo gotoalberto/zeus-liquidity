@@ -13,8 +13,8 @@ function formatCurrency(value: number): string {
 const emptyState = (text: string, sub?: string) => (
   <div className="card-zeus p-8 text-center">
     <div style={{ maxWidth: 400, margin: "0 auto" }}>
-      <p style={{ fontSize: "1rem", fontWeight: 600, color: "#000", marginBottom: "0.5rem" }}>{text}</p>
-      {sub && <p style={{ fontSize: "0.875rem", color: "#666" }}>{sub}</p>}
+      <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.5rem" }}>{text}</p>
+      {sub && <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>{sub}</p>}
     </div>
   </div>
 )
@@ -63,12 +63,12 @@ export function PositionsList() {
       <div className="card-zeus p-6" style={{ position: "sticky", top: 80, zIndex: 10 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(1, 1fr)", gap: "1.5rem" }} className="md:grid-cols-3">
           {[
-            { label: "Total Portfolio Value", value: formatCurrency(totalValueUsd), color: "#000" },
+            { label: "Total Portfolio Value", value: formatCurrency(totalValueUsd), color: "#fff" },
             { label: "Uncollected Fees", value: formatCurrency(totalFeesUsd), color: "#22c55e" },
             { label: "Active Positions", value: String(positionCount), color: "#4394f4" },
           ].map(({ label, value, color }) => (
             <div key={label}>
-              <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#666", marginBottom: "0.3rem" }}>{label}</p>
+              <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.3rem" }}>{label}</p>
               <p style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", color, letterSpacing: "0.01em" }}>{value}</p>
             </div>
           ))}
