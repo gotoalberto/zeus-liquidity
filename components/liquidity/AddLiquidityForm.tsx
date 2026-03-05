@@ -5,41 +5,120 @@
  *
  * Complete add liquidity form with:
  * - MCAP-based range selector
- * - Token amount inputs (ETH + ZEUS)
+ * - Token amount inputs (ETH + ZEUS, or single token when out of range)
  * - Auto-calculation of amounts based on current price
  * - Slippage tolerance selector
- * - Two-step: Approve ZEUS → Add Liquidity
- * - Simulation with eth_call before submitting
- * - Transaction status handling
+ * - Two-step: Approve ZEUS → Add Liquidity (multicall)
+ *
+ * Out-of-range single-token behavior (Uniswap V4):
+ *   Pool: currency0 = ETH (18 dec), currency1 = ZEUS (9 dec)
+ *   minTick (from minMcap) is numerically > maxTick (from maxMcap)
+ *   - currentTick < tickLower → mcap below range → ETH only
+ *   - currentTick > tickUpper → mcap above range → ZEUS only
+ *   - otherwise → both
  */
 
 import { useState, useEffect } from "react"
-import { useAccount, useBalance, useReadContract } from "wagmi"
-import { parseUnits, formatUnits, erc20Abi } from "viem"
+import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi"
+import { parseUnits, formatUnits, erc20Abi, maxUint256, parseEther } from "viem"
 import { RangeSelector } from "./RangeSelector"
 import { PriceRange } from "@/types"
-import { ZEUS_TOKEN_ADDRESS, ZEUS_DECIMALS, DEFAULT_SLIPPAGE_TOLERANCE } from "@/lib/constants"
+import {
+  ZEUS_TOKEN_ADDRESS,
+  ZEUS_DECIMALS,
+  DEFAULT_SLIPPAGE_TOLERANCE,
+  UNISWAP_V4_POSITION_MANAGER,
+  POOL_FEE,
+  POOL_TICK_SPACING,
+  POOL_HOOKS_ADDRESS,
+  CHAIN_ID,
+} from "@/lib/constants"
 import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
+import { mcapToTick } from "@/lib/uniswap/mcap"
 import { toast } from "sonner"
+
+// Uniswap V4 PositionManager ABI (minimal — mint via multicall)
+const POSITION_MANAGER_ABI = [
+  {
+    name: "multicall",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [{ name: "deadline", type: "uint256" }, { name: "data", type: "bytes[]" }],
+    outputs: [{ name: "results", type: "bytes[]" }],
+  },
+  {
+    name: "mint",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          {
+            name: "poolKey",
+            type: "tuple",
+            components: [
+              { name: "currency0", type: "address" },
+              { name: "currency1", type: "address" },
+              { name: "fee", type: "uint24" },
+              { name: "tickSpacing", type: "int24" },
+              { name: "hooks", type: "address" },
+            ],
+          },
+          { name: "tickLower", type: "int24" },
+          { name: "tickUpper", type: "int24" },
+          { name: "liquidity", type: "uint128" },
+          { name: "amount0Max", type: "uint128" },
+          { name: "amount1Max", type: "uint128" },
+          { name: "recipient", type: "address" },
+          { name: "hookData", type: "bytes" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "tokenId", type: "uint256" },
+      { name: "liquidity", type: "uint128" },
+      { name: "amount0", type: "uint256" },
+      { name: "amount1", type: "uint256" },
+    ],
+  },
+] as const
+
+const ETH_ADDRESS = "0x0000000000000000000000000000000000000000" as const
 
 export function AddLiquidityForm() {
   const { address, isConnected } = useAccount()
+  const chainId = useChainId()
   const { data: priceData } = useZeusPrice()
   const { data: ethPriceUsd } = useEthPrice()
 
   // Balances
   const { data: ethBalance } = useBalance({ address })
 
-  // Get ZEUS balance using contract read
   const { data: zeusBalanceRaw } = useReadContract({
     address: ZEUS_TOKEN_ADDRESS as `0x${string}`,
     abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: {
-      enabled: !!address,
-    },
+    query: { enabled: !!address },
   })
+
+  // Check current ZEUS allowance for position manager
+  const { data: zeusAllowance, refetch: refetchAllowance } = useReadContract({
+    address: ZEUS_TOKEN_ADDRESS as `0x${string}`,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: address ? [address, UNISWAP_V4_POSITION_MANAGER as `0x${string}`] : undefined,
+    query: { enabled: !!address },
+  })
+
+  // Write contract hooks
+  const { writeContract: writeApprove, data: approveTxHash, isPending: isApproving } = useWriteContract()
+  const { writeContract: writeMint, data: mintTxHash, isPending: isMinting } = useWriteContract()
+
+  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash })
+  const { isLoading: isMintConfirming, isSuccess: isMintSuccess } = useWaitForTransactionReceipt({ hash: mintTxHash })
 
   // Form state
   const [selectedRange, setSelectedRange] = useState<PriceRange | null>(null)
@@ -47,75 +126,135 @@ export function AddLiquidityForm() {
   const [zeusAmount, setZeusAmount] = useState<string>("")
   const [slippage, setSlippage] = useState<number>(DEFAULT_SLIPPAGE_TOLERANCE)
   const [customSlippage, setCustomSlippage] = useState<string>("")
-  const [isApproved, setIsApproved] = useState(false)
-  const [isApproving, setIsApproving] = useState(false)
-  const [isAdding, setIsAdding] = useState(false)
 
-  // Auto-calculate ZEUS amount based on ETH input and current price
+  // Approval success effect
   useEffect(() => {
+    if (isApproveSuccess) {
+      toast.success("ZEUS approved!")
+      refetchAllowance()
+    }
+  }, [isApproveSuccess, refetchAllowance])
+
+  // Mint success effect
+  useEffect(() => {
+    if (isMintSuccess) {
+      toast.success("Liquidity added successfully!")
+      setEthAmount("")
+      setZeusAmount("")
+    }
+  }, [isMintSuccess])
+
+  // Determine which tokens are needed based on current price vs range
+  // Pool: currency0 = ETH (18 dec), currency1 = ZEUS (9 dec)
+  // minTick (from minMcap) is numerically > maxTick (from maxMcap) — inverted because higher mcap = lower ZEUS-per-ETH = lower tick
+  const currentTick = priceData && ethPriceUsd
+    ? mcapToTick(priceData.marketCapUsd, ethPriceUsd, priceData.totalSupply)
+    : null
+
+  const tickLower = selectedRange ? Math.min(selectedRange.minTick, selectedRange.maxTick) : null
+  const tickUpper = selectedRange ? Math.max(selectedRange.minTick, selectedRange.maxTick) : null
+
+  const isOutOfRangeBelow = selectedRange && currentTick !== null && tickLower !== null && currentTick < tickLower
+  const isOutOfRangeAbove = selectedRange && currentTick !== null && tickUpper !== null && currentTick > tickUpper
+
+  // Below range → ETH only; above range → ZEUS only; in range → both
+  const needsEth = !selectedRange || currentTick === null || !isOutOfRangeAbove
+  const needsZeus = !selectedRange || currentTick === null || !isOutOfRangeBelow
+
+  // Auto-calculate ZEUS amount based on ETH when both needed
+  useEffect(() => {
+    if (!needsZeus || !needsEth) return
     if (!ethAmount || !priceData || ethAmount === "") {
       setZeusAmount("")
       return
     }
-
     try {
       const ethAmountNum = parseFloat(ethAmount)
-      if (ethAmountNum <= 0) {
-        setZeusAmount("")
-        return
-      }
-
-      // Simple 50/50 value calculation at current price
+      if (ethAmountNum <= 0) { setZeusAmount(""); return }
       const ethValueUsd = ethAmountNum * (ethPriceUsd || 0)
       const zeusAmountNum = ethValueUsd / priceData.priceUsd
-
       setZeusAmount(zeusAmountNum.toFixed(4))
-    } catch (error) {
-      console.error("Failed to calculate ZEUS amount:", error)
-    }
-  }, [ethAmount, priceData, ethPriceUsd])
+    } catch { /* ignore */ }
+  }, [ethAmount, priceData, ethPriceUsd, needsZeus, needsEth])
 
-  const handleApprove = async () => {
-    if (!address) return
+  // Clear irrelevant amounts when range changes
+  useEffect(() => {
+    if (isOutOfRangeBelow) setEthAmount("")
+    else if (isOutOfRangeAbove) setZeusAmount("")
+  }, [isOutOfRangeBelow, isOutOfRangeAbove])
 
-    setIsApproving(true)
-    try {
-      // TODO: Implement ZEUS approval logic in Step 6
-      toast.info("Token approval coming in Step 6")
+  const ethAmountNum = parseFloat(ethAmount) || 0
+  const zeusAmountNum = parseFloat(zeusAmount) || 0
+  const ethBalanceNum = ethBalance ? parseFloat(formatUnits(ethBalance.value, 18)) : 0
+  const zeusBalanceNum = zeusBalanceRaw ? parseFloat(formatUnits(zeusBalanceRaw, ZEUS_DECIMALS)) : 0
 
-      // Simulate approval
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      setIsApproved(true)
-      toast.success("ZEUS approved for spending")
-    } catch (error) {
-      console.error("Approval failed:", error)
-      toast.error("Failed to approve ZEUS")
-    } finally {
-      setIsApproving(false)
-    }
+  const hasInsufficientEth = needsEth && ethAmountNum > ethBalanceNum && ethAmountNum > 0
+  const hasInsufficientZeus = needsZeus && zeusAmountNum > zeusBalanceNum && zeusAmountNum > 0
+  const ethAmountValid = !needsEth || ethAmountNum > 0
+  const zeusAmountValid = !needsZeus || zeusAmountNum > 0
+  const isFormValid = selectedRange && ethAmountValid && zeusAmountValid && !hasInsufficientEth && !hasInsufficientZeus
+
+  // Check if ZEUS is already approved (allowance >= zeusAmount)
+  const zeusAmountRaw = zeusAmountNum > 0 ? parseUnits(zeusAmount || "0", ZEUS_DECIMALS) : 0n
+  const isZeusApproved = !needsZeus || (zeusAllowance !== undefined && zeusAllowance >= zeusAmountRaw)
+  const isWrongChain = chainId !== CHAIN_ID
+
+  const totalValueUsd = priceData && ethPriceUsd
+    ? (needsEth ? ethAmountNum * ethPriceUsd : 0) + (needsZeus ? zeusAmountNum * priceData.priceUsd : 0)
+    : 0
+
+  const handleApprove = () => {
+    if (!address || !zeusAmount) return
+    writeApprove({
+      address: ZEUS_TOKEN_ADDRESS as `0x${string}`,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [UNISWAP_V4_POSITION_MANAGER as `0x${string}`, maxUint256],
+    })
   }
 
-  const handleAddLiquidity = async () => {
-    if (!address || !selectedRange || !ethAmount || !zeusAmount) return
+  const handleAddLiquidity = () => {
+    if (!address || !selectedRange || !isFormValid) return
+    if (isWrongChain) { toast.error("Switch to Ethereum Mainnet"); return }
 
-    setIsAdding(true)
-    try {
-      // TODO: Implement Uniswap V4 mint logic in Step 6
-      toast.info("Add liquidity integration coming in Step 6")
+    const tLower = Math.min(selectedRange.minTick, selectedRange.maxTick)
+    const tUpper = Math.max(selectedRange.minTick, selectedRange.maxTick)
+    const slippageFactor = 1 - slippage / 100
 
-      // Simulate transaction
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-      toast.success("Liquidity added successfully!")
+    const ethAmountRaw = needsEth ? parseEther(ethAmountNum.toFixed(18)) : 0n
+    const zeusAmountRawBig = needsZeus && zeusAmountNum > 0 ? parseUnits(zeusAmountNum.toFixed(ZEUS_DECIMALS), ZEUS_DECIMALS) : 0n
 
-      // Reset form
-      setEthAmount("")
-      setZeusAmount("")
-    } catch (error) {
-      console.error("Add liquidity failed:", error)
-      toast.error("Failed to add liquidity")
-    } finally {
-      setIsAdding(false)
-    }
+    const amount0Max = ethAmountRaw > 0n ? ethAmountRaw : 0n
+    const amount1Max = zeusAmountRawBig > 0n ? zeusAmountRawBig : 0n
+
+    // Estimate liquidity — use a large value and let the contract cap it
+    // The contract will use the smaller of the two ratios
+    const liquidityEstimate = 1000000000000000000n // placeholder — contract will compute actual
+
+    writeMint({
+      address: UNISWAP_V4_POSITION_MANAGER as `0x${string}`,
+      abi: POSITION_MANAGER_ABI,
+      functionName: "mint",
+      value: ethAmountRaw,
+      args: [{
+        poolKey: {
+          currency0: ETH_ADDRESS,
+          currency1: ZEUS_TOKEN_ADDRESS as `0x${string}`,
+          fee: POOL_FEE,
+          tickSpacing: POOL_TICK_SPACING,
+          hooks: POOL_HOOKS_ADDRESS as `0x${string}`,
+        },
+        tickLower: tLower,
+        tickUpper: tUpper,
+        liquidity: liquidityEstimate,
+        amount0Max: amount0Max,
+        amount1Max: amount1Max,
+        recipient: address,
+        hookData: "0x" as `0x${string}`,
+      }],
+    }, {
+      onError: (err) => toast.error(`Transaction failed: ${err.message.slice(0, 80)}`),
+    })
   }
 
   if (!isConnected) {
@@ -129,24 +268,17 @@ export function AddLiquidityForm() {
     )
   }
 
-  const ethAmountNum = parseFloat(ethAmount) || 0
-  const zeusAmountNum = parseFloat(zeusAmount) || 0
-  const ethBalanceNum = ethBalance ? parseFloat(formatUnits(ethBalance.value, 18)) : 0
-  const zeusBalanceNum = zeusBalanceRaw
-    ? parseFloat(formatUnits(zeusBalanceRaw, ZEUS_DECIMALS))
-    : 0
-
-  const hasInsufficientEth = ethAmountNum > ethBalanceNum
-  const hasInsufficientZeus = zeusAmountNum > zeusBalanceNum
-  const isFormValid =
-    selectedRange &&
-    ethAmountNum > 0 &&
-    zeusAmountNum > 0 &&
-    !hasInsufficientEth &&
-    !hasInsufficientZeus
+  const isLoading = isApproving || isApproveConfirming || isMinting || isMintConfirming
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+      {/* Wrong chain warning */}
+      {isWrongChain && (
+        <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "0.75rem", padding: "0.875rem 1rem", fontSize: "0.85rem", fontWeight: 600, color: "#f87171" }}>
+          Switch to Ethereum Mainnet to add liquidity.
+        </div>
+      )}
+
       {/* Range Selector */}
       <div>
         <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>Select Range</p>
@@ -155,72 +287,85 @@ export function AddLiquidityForm() {
 
       <div className="divider" />
 
+      {/* Out-of-range notice */}
+      {isOutOfRangeBelow && (
+        <div style={{ background: "rgba(109,156,244,0.08)", border: "1px solid rgba(109,156,244,0.25)", borderRadius: "0.75rem", padding: "0.875rem 1rem", fontSize: "0.85rem", fontWeight: 600, color: "#a8c8ff" }}>
+          Current price is below your range. Deposit <strong>ETH only</strong> — ZEUS will be added automatically when price enters range.
+        </div>
+      )}
+      {isOutOfRangeAbove && (
+        <div style={{ background: "rgba(109,156,244,0.08)", border: "1px solid rgba(109,156,244,0.25)", borderRadius: "0.75rem", padding: "0.875rem 1rem", fontSize: "0.85rem", fontWeight: 600, color: "#a8c8ff" }}>
+          Current price is above your range. Deposit <strong>ZEUS only</strong> — ETH will be added automatically when price enters range.
+        </div>
+      )}
+
       {/* Amount Inputs */}
       <div>
         <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>Deposit Amounts</p>
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {/* ETH Input */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ETH Amount</label>
-              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-                Balance: {ethBalanceNum.toFixed(6)} ETH
-              </span>
+          {needsEth && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ETH Amount</label>
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
+                  Balance: {ethBalanceNum.toFixed(6)} ETH
+                </span>
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  type="number"
+                  value={ethAmount}
+                  onChange={(e) => setEthAmount(e.target.value)}
+                  placeholder="0.0"
+                  step="0.01"
+                  className={`input-zeus ${hasInsufficientEth ? "error" : ""}`}
+                  style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
+                />
+                <button
+                  onClick={() => setEthAmount((ethBalanceNum * 0.99).toFixed(6))}
+                  style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", padding: "0.2rem 0.5rem", background: "rgba(67,148,244,0.15)", border: "1px solid rgba(67,148,244,0.3)", color: "#a8c8ff", fontSize: "0.65rem", borderRadius: "9999px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  MAX
+                </button>
+              </div>
+              {hasInsufficientEth && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ETH balance</p>}
             </div>
-            <div style={{ position: "relative" }}>
-              <input
-                type="number"
-                value={ethAmount}
-                onChange={(e) => setEthAmount(e.target.value)}
-                placeholder="0.0"
-                step="0.01"
-                className={`input-zeus ${hasInsufficientEth ? "error" : ""}`}
-                style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
-              />
-              <button
-                onClick={() => setEthAmount((ethBalanceNum * 0.99).toFixed(6))}
-                style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", padding: "0.2rem 0.5rem", background: "rgba(67,148,244,0.15)", border: "1px solid rgba(67,148,244,0.3)", color: "var(--blue-light)", fontSize: "0.65rem", borderRadius: "9999px", fontWeight: 700, cursor: "pointer" }}
-              >
-                MAX
-              </button>
-            </div>
-            {hasInsufficientEth && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ETH balance</p>}
-          </div>
+          )}
 
-          {/* ZEUS Input */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ZEUS Amount</label>
-              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-                Balance: {zeusBalanceNum.toFixed(4)} ZEUS
-              </span>
+          {needsZeus && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ZEUS Amount</label>
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
+                  Balance: {zeusBalanceNum.toFixed(4)} ZEUS
+                </span>
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  type="number"
+                  value={zeusAmount}
+                  onChange={(e) => setZeusAmount(e.target.value)}
+                  placeholder="0.0"
+                  step="0.01"
+                  className={`input-zeus ${hasInsufficientZeus ? "error" : ""}`}
+                  style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
+                />
+                <button
+                  onClick={() => setZeusAmount(zeusBalanceNum.toFixed(4))}
+                  style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", padding: "0.2rem 0.5rem", background: "rgba(67,148,244,0.15)", border: "1px solid rgba(67,148,244,0.3)", color: "#a8c8ff", fontSize: "0.65rem", borderRadius: "9999px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  MAX
+                </button>
+              </div>
+              {hasInsufficientZeus && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ZEUS balance</p>}
             </div>
-            <div style={{ position: "relative" }}>
-              <input
-                type="number"
-                value={zeusAmount}
-                onChange={(e) => setZeusAmount(e.target.value)}
-                placeholder="0.0"
-                step="0.01"
-                className={`input-zeus ${hasInsufficientZeus ? "error" : ""}`}
-                style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
-              />
-              <button
-                onClick={() => setZeusAmount(zeusBalanceNum.toFixed(4))}
-                style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", padding: "0.2rem 0.5rem", background: "rgba(67,148,244,0.15)", border: "1px solid rgba(67,148,244,0.3)", color: "var(--blue-light)", fontSize: "0.65rem", borderRadius: "9999px", fontWeight: 700, cursor: "pointer" }}
-              >
-                MAX
-              </button>
-            </div>
-            {hasInsufficientZeus && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ZEUS balance</p>}
-          </div>
+          )}
 
-          {/* Estimated USD Value */}
-          {ethAmountNum > 0 && zeusAmountNum > 0 && priceData && ethPriceUsd && (
+          {totalValueUsd > 0 && (
             <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.75rem", padding: "1rem" }}>
               <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, color: "rgba(74,222,128,0.6)", marginBottom: "0.3rem" }}>Total Value</p>
               <p style={{ fontFamily: "var(--font-display)", fontSize: "1.8rem", color: "#4ade80" }}>
-                ${(ethAmountNum * ethPriceUsd + zeusAmountNum * priceData.priceUsd).toFixed(2)}
+                ${totalValueUsd.toFixed(2)}
               </p>
             </div>
           )}
@@ -246,7 +391,7 @@ export function AddLiquidityForm() {
                 transition: "all 0.15s",
                 background: slippage === value && !customSlippage ? "rgba(240,230,78,0.15)" : "rgba(255,255,255,0.04)",
                 border: slippage === value && !customSlippage ? "1px solid rgba(240,230,78,0.4)" : "1px solid rgba(255,255,255,0.1)",
-                color: slippage === value && !customSlippage ? "var(--yellow)" : "var(--text-secondary)",
+                color: slippage === value && !customSlippage ? "var(--highlight)" : "var(--text-secondary)",
               }}
             >
               {value}%
@@ -269,29 +414,43 @@ export function AddLiquidityForm() {
 
       {/* Action Buttons */}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        {!isApproved ? (
+        {needsZeus && !isZeusApproved ? (
           <button
             onClick={handleApprove}
-            disabled={!isFormValid || isApproving}
+            disabled={!isFormValid || isLoading || isWrongChain}
             className="btn-zeus"
             style={{ width: "100%", fontSize: "1rem", padding: "0.9rem" }}
           >
-            {isApproving ? "Approving ZEUS..." : "Approve ZEUS"}
+            {isApproving || isApproveConfirming ? "Approving ZEUS..." : "Approve ZEUS"}
           </button>
         ) : (
           <button
             onClick={handleAddLiquidity}
-            disabled={!isFormValid || isAdding}
+            disabled={!isFormValid || isLoading || isWrongChain}
             className="btn-zeus"
             style={{ width: "100%", fontSize: "1rem", padding: "0.9rem" }}
           >
-            {isAdding ? "Adding Liquidity..." : "Add Liquidity"}
+            {isMinting || isMintConfirming ? "Adding Liquidity..." : "Add Liquidity"}
           </button>
         )}
 
-        {!isFormValid && (
+        {/* Tx hashes */}
+        {approveTxHash && (
+          <a href={`https://etherscan.io/tx/${approveTxHash}`} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: "0.72rem", textAlign: "center", color: "#a8c8ff", fontFamily: "monospace" }}>
+            Approval tx: {approveTxHash.slice(0, 10)}...
+          </a>
+        )}
+        {mintTxHash && (
+          <a href={`https://etherscan.io/tx/${mintTxHash}`} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: "0.72rem", textAlign: "center", color: "#a8c8ff", fontFamily: "monospace" }}>
+            Mint tx: {mintTxHash.slice(0, 10)}...
+          </a>
+        )}
+
+        {!isFormValid && !isLoading && (
           <p style={{ fontSize: "0.72rem", textAlign: "center", fontWeight: 600, color: "var(--text-muted)" }}>
-            {!selectedRange ? "Select a price range above" : !ethAmount || !zeusAmount ? "Enter token amounts" : hasInsufficientEth || hasInsufficientZeus ? "Insufficient balance" : "Fill all fields"}
+            {!selectedRange ? "Select a price range above" : !ethAmountValid || !zeusAmountValid ? "Enter token amounts" : hasInsufficientEth || hasInsufficientZeus ? "Insufficient balance" : "Fill all fields"}
           </p>
         )}
       </div>

@@ -62,7 +62,7 @@ export function MarketStats() {
   if (isLoading || !priceData) {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-        {[1, 2, 3, 4].map((i) => (
+        {[1, 2].map((i) => (
           <div key={i} className="stat-card" style={{ minHeight: 110 }}>
             <div className="skeleton" style={{ height: 12, width: 80, marginBottom: 12 }} />
             <div className="skeleton" style={{ height: 28, width: 110, marginBottom: 8 }} />
@@ -78,19 +78,6 @@ export function MarketStats() {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-      <StatCard
-        accent="yellow"
-        label="Price (USD)"
-        value={formatPrice(priceData.priceUsd)}
-        sub={priceChangeText}
-        isPositive={isPositive}
-      />
-      <StatCard
-        accent="blue"
-        label="Price (ETH)"
-        value={priceData.priceEth < 0.000001 ? priceData.priceEth.toExponential(3) : priceData.priceEth.toFixed(10)}
-        sub="ETH pair"
-      />
       <StatCard
         accent="default"
         label="Market Cap"
