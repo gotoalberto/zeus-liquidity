@@ -60,12 +60,14 @@ export function mcapToTick(
   // Calculate ZEUS price in USD
   const zeusUsdPrice = mcapUsd / totalSupplyHuman
 
-  // Calculate ZEUS price in ETH (how many ZEUS per 1 ETH)
-  const zeusPerEth = zeusUsdPrice / ethPriceUsd
+  // Calculate how many ZEUS per 1 ETH (human units)
+  // zeusPerEth = ethPriceUsd / zeusUsdPrice
+  const zeusPerEthHuman = ethPriceUsd / zeusUsdPrice
 
-  // Apply decimal adjustment for Uniswap V4
-  // Pool price ratio = ZEUS per ETH, adjusted for decimal difference
-  const priceRatio = zeusPerEth * DECIMAL_ADJUSTMENT
+  // V4 pool price ratio = currency1_raw / currency0_raw = ZEUS_raw / ETH_raw
+  // = zeusPerEthHuman * 10^ZEUS_DECIMALS / 10^ETH_DECIMALS
+  // = zeusPerEthHuman * DECIMAL_ADJUSTMENT  (DECIMAL_ADJUSTMENT = 10^(9-18) = 1e-9)
+  const priceRatio = zeusPerEthHuman * DECIMAL_ADJUSTMENT
 
   if (priceRatio <= 0) {
     throw new Error("Price ratio must be positive")
@@ -98,16 +100,16 @@ export function tickToMcap(
   // Convert total supply to human-readable units
   const totalSupplyHuman = Number(totalSupplyRaw) / 10 ** ZEUS_DECIMALS
 
-  // Calculate price ratio from tick: priceRatio = 1.0001^tick
+  // priceRatio = 1.0001^tick = ZEUS_raw / ETH_raw
   const priceRatio = 1.0001 ** tick
 
-  // Remove decimal adjustment to get ZEUS per ETH
-  const zeusPerEth = priceRatio / DECIMAL_ADJUSTMENT
+  // zeusPerEthHuman = priceRatio / DECIMAL_ADJUSTMENT
+  const zeusPerEthHuman = priceRatio / DECIMAL_ADJUSTMENT
 
-  // Calculate ZEUS price in USD
-  const zeusUsdPrice = zeusPerEth * ethPriceUsd
+  // ZEUS price in USD = ethPriceUsd / zeusPerEthHuman
+  const zeusUsdPrice = ethPriceUsd / zeusPerEthHuman
 
-  // Calculate market cap
+  // Market cap
   return zeusUsdPrice * totalSupplyHuman
 }
 
