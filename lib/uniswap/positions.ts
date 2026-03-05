@@ -1,260 +1,239 @@
 /**
  * Uniswap V4 Position Management
  *
- * Fetches and decodes user positions from V4 PositionManager
- * Handles ERC721 Transfer events and position info calls
+ * V4 PositionManager uses different functions than V3:
+ *   - getPoolAndPositionInfo(uint256 tokenId) → (PoolKey, PositionInfo packed bytes32)
+ *   - getPositionLiquidity(uint256 tokenId) → uint128
+ *   - PositionInfo is packed bytes32: poolId prefix | tickUpper (24 bits) | tickLower (24 bits) | hasSubscriber (1 bit)
+ *
+ * V4 PoolManager for current price:
+ *   - getSlot0(PoolId) → (sqrtPriceX96, tick, protocolFee, lpFee)
  */
 
-import { encodeFunctionData, decodeFunctionResult, parseAbiItem } from "viem"
+import { encodeAbiParameters, keccak256 } from "viem"
 import { getLogs, ethCall, alchemyBatchRpcCall } from "@/lib/services/alchemy"
-import { UNISWAP_V4_POSITION_MANAGER, ZEUS_TOKEN_ADDRESS, ZEUS_DECIMALS } from "@/lib/constants"
-import { PositionInfo, Position } from "@/types"
+import {
+  UNISWAP_V4_POSITION_MANAGER,
+  UNISWAP_V4_POOL_MANAGER,
+  ZEUS_TOKEN_ADDRESS,
+  ZEUS_DECIMALS,
+  POOL_FEE,
+  POOL_TICK_SPACING,
+  POOL_HOOKS_ADDRESS,
+} from "@/lib/constants"
+import { Position } from "@/types"
 import { tickToMcap, tickToZeusEthPrice } from "@/lib/uniswap/mcap"
 
-// ============================================================================
-// Position Manager ABI (minimal, only what we need)
-// ============================================================================
+// ERC721 Transfer event topic
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
-const POSITION_MANAGER_ABI = [
-  // Transfer event (ERC721)
-  parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"),
+// V4 PositionManager function selectors
+// getPoolAndPositionInfo(uint256): 0x7ba03aad
+// getPositionLiquidity(uint256): 0x1efeed33
+// V4 PoolManager: getSlot0(bytes32): 0xc815641c
 
-  // getPositionInfo function
-  parseAbiItem(
-    "function positions(uint256 tokenId) external view returns (uint96 nonce, address operator, address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)"
-  ),
-] as const
-
-// ============================================================================
-// Fetch User's Position Token IDs
-// ============================================================================
+// PoolId for ETH/ZEUS fee=3000 tickSpacing=60 hooks=0x0
+// Computed as keccak256(abi.encode(poolKey))
+function computePoolId(): `0x${string}` {
+  return keccak256(
+    encodeAbiParameters(
+      [{ type: "tuple", components: [
+        { name: "currency0", type: "address" },
+        { name: "currency1", type: "address" },
+        { name: "fee", type: "uint24" },
+        { name: "tickSpacing", type: "int24" },
+        { name: "hooks", type: "address" },
+      ]}],
+      [{ currency0: "0x0000000000000000000000000000000000000000", currency1: ZEUS_TOKEN_ADDRESS as `0x${string}`, fee: POOL_FEE, tickSpacing: POOL_TICK_SPACING, hooks: POOL_HOOKS_ADDRESS as `0x${string}` }]
+    )
+  )
+}
 
 /**
- * Get all position NFT token IDs owned by an address
- * Fetches Transfer events where `to` is the user address
+ * Get current tick from the V4 PoolManager via getSlot0(poolId)
+ */
+export async function getCurrentPoolTick(): Promise<number> {
+  try {
+    const poolId = computePoolId()
+    // getSlot0(bytes32 poolId) selector = 0xc815641c
+    const data = `0xc815641c${poolId.slice(2)}` as `0x${string}`
+    const result = await ethCall({ to: UNISWAP_V4_POOL_MANAGER, data })
+    if (!result || result === "0x") return 0
+    // Returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)
+    // slot 0 = sqrtPriceX96 (uint160, padded to 32 bytes)
+    // slot 1 = tick (int24, padded to 32 bytes)
+    const hex = (result as string).slice(2)
+    const tickRaw = parseInt(hex.slice(64, 128), 16)
+    return tickRaw > 0x7fffffff ? tickRaw - 0x100000000 : tickRaw
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Get all position NFT token IDs owned by an address via Transfer(from=0, to=user) events
  */
 export async function getUserPositionTokenIds(userAddress: string): Promise<bigint[]> {
   try {
-    // Get current block
-    const currentBlock = await alchemyBatchRpcCall([
-      { method: "eth_blockNumber", params: [] },
-    ])
-    const currentBlockNumber = parseInt(currentBlock[0], 16)
+    const currentBlockResp = await alchemyBatchRpcCall([{ method: "eth_blockNumber", params: [] }])
+    const currentBlock = parseInt(currentBlockResp[0], 16)
+    // V4 launched around block 21,355,000 — search from there
+    const fromBlock = Math.max(21355000, currentBlock - 500000)
 
-    // Look back ~1 month of blocks (assuming ~12s block time)
-    const blocksPerMonth = Math.floor((30 * 24 * 60 * 60) / 12)
-    const fromBlock = Math.max(0, currentBlockNumber - blocksPerMonth)
-
-    // Get Transfer events where `to` = userAddress
-    // Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
     const logs = await getLogs({
       address: UNISWAP_V4_POSITION_MANAGER,
       fromBlock: `0x${fromBlock.toString(16)}`,
       toBlock: "latest",
       topics: [
-        // Transfer event signature
-        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        null, // from (any)
-        // to (user address, padded to 32 bytes)
+        TRANSFER_TOPIC,
+        null,
         `0x000000000000000000000000${userAddress.slice(2).toLowerCase()}`,
       ],
     })
 
-    // Extract token IDs from topics[3]
     const tokenIds = logs.map((log) => BigInt(log.topics[3]))
-
-    // Remove duplicates
-    const uniqueTokenIds = Array.from(new Set(tokenIds.map((id) => id.toString()))).map(
-      (id) => BigInt(id)
-    )
-
-    return uniqueTokenIds
+    // Deduplicate
+    return Array.from(new Map(tokenIds.map((id) => [id.toString(), id])).values())
   } catch (error) {
-    console.error("Failed to fetch user position token IDs:", error)
+    console.error("Failed to fetch position token IDs:", error)
     return []
   }
 }
 
-// ============================================================================
-// Fetch Position Info
-// ============================================================================
+/**
+ * Decode PositionInfo packed bytes32:
+ * bit 0: hasSubscriber
+ * bits 8..31: tickLower (24-bit signed)
+ * bits 32..55: tickUpper (24-bit signed)
+ * bits 56..255: poolId prefix (200 bits)
+ */
+function decodePositionInfo(packed: `0x${string}`): { tickLower: number; tickUpper: number } {
+  const val = BigInt(packed)
+  const tickLowerRaw = (val >> 8n) & 0xFFFFFFn
+  const tickUpperRaw = (val >> 32n) & 0xFFFFFFn
+  const tickLower = tickLowerRaw >= 0x800000n ? Number(tickLowerRaw) - 0x1000000 : Number(tickLowerRaw)
+  const tickUpper = tickUpperRaw >= 0x800000n ? Number(tickUpperRaw) - 0x1000000 : Number(tickUpperRaw)
+  return { tickLower, tickUpper }
+}
 
 /**
- * Get detailed position information for a token ID
+ * Fetch position data for a tokenId using V4-correct functions
  */
-export async function getPositionInfo(tokenId: bigint): Promise<PositionInfo | null> {
+export async function getV4PositionInfo(tokenId: bigint): Promise<{
+  tickLower: number; tickUpper: number; liquidity: bigint
+} | null> {
   try {
-    // Encode positions(tokenId) call
-    const data = encodeFunctionData({
-      abi: POSITION_MANAGER_ABI,
-      functionName: "positions",
-      args: [tokenId],
-    })
+    const tokenIdHex = tokenId.toString(16).padStart(64, "0")
 
-    // Make eth_call
-    const result = await ethCall({
-      to: UNISWAP_V4_POSITION_MANAGER,
-      data,
-    })
+    const [infoResult, liqResult] = await Promise.all([
+      ethCall({ to: UNISWAP_V4_POSITION_MANAGER, data: `0x7ba03aad${tokenIdHex}` as `0x${string}` }),
+      ethCall({ to: UNISWAP_V4_POSITION_MANAGER, data: `0x1efeed33${tokenIdHex}` as `0x${string}` }),
+    ])
 
-    // Decode result
-    const decoded = decodeFunctionResult({
-      abi: POSITION_MANAGER_ABI,
-      functionName: "positions",
-      data: result as `0x${string}`,
-    }) as [bigint, string, string, string, number, number, number, bigint, bigint, bigint, bigint, bigint]
+    if (!infoResult || infoResult === "0x") return null
 
-    const [
-      nonce,
-      operator,
-      token0,
-      token1,
-      fee,
-      tickLower,
-      tickUpper,
-      liquidity,
-      feeGrowthInside0LastX128,
-      feeGrowthInside1LastX128,
-      tokensOwed0,
-      tokensOwed1,
-    ] = decoded
+    // getPoolAndPositionInfo returns (PoolKey poolKey, PositionInfo info)
+    // PoolKey = 5 slots (currency0, currency1, fee, tickSpacing, hooks)
+    // PositionInfo = 1 slot (packed bytes32)
+    const infoHex = (infoResult as string).slice(2)
+    const positionInfoPacked = `0x${infoHex.slice(5 * 64, 6 * 64)}` as `0x${string}`
+    const { tickLower, tickUpper } = decodePositionInfo(positionInfoPacked)
 
-    return {
-      tokenId,
-      poolKey: {
-        currency0: token0,
-        currency1: token1,
-        fee,
-        tickSpacing: 60,
-        hooks: "0x0000000000000000000000000000000000000000",
-      },
-      tickLower,
-      tickUpper,
-      liquidity,
-      feeGrowthInside0LastX128,
-      feeGrowthInside1LastX128,
-      tokensOwed0,
-      tokensOwed1,
-    }
+    const liquidity = liqResult && liqResult !== "0x" ? BigInt(liqResult as string) : 0n
+
+    return { tickLower, tickUpper, liquidity }
   } catch (error) {
-    console.error(`Failed to fetch position info for tokenId ${tokenId}:`, error)
+    console.error(`Failed to fetch V4 position ${tokenId}:`, error)
     return null
   }
 }
 
-// ============================================================================
-// Calculate Token Amounts from Liquidity
-// ============================================================================
-
 /**
- * Calculate token amounts in a position from liquidity and tick range
- * Simplified calculation for display purposes
- *
- * Note: This is an approximation. For exact amounts, use Uniswap SDK's position.amount0/amount1
+ * Calculate token amounts from liquidity using sqrtPrice math
  */
-export function calculatePositionAmounts(
-  liquidity: bigint,
+function getAmountsForLiquidity(
+  sqrtPriceX96: bigint,
   tickLower: number,
   tickUpper: number,
-  currentTick: number
+  liquidity: bigint
 ): { amount0: bigint; amount1: bigint } {
-  // Simplified calculation - in production, use Uniswap SDK's Position class
-  // For now, we'll use a rough estimate based on tick ranges
+  if (liquidity === 0n) return { amount0: 0n, amount1: 0n }
 
-  if (liquidity === 0n) {
-    return { amount0: 0n, amount1: 0n }
+  const Q96 = 2n ** 96n
+  const sqrtPriceLower = BigInt(Math.floor(Math.sqrt(1.0001 ** tickLower) * Number(Q96)))
+  const sqrtPriceUpper = BigInt(Math.floor(Math.sqrt(1.0001 ** tickUpper) * Number(Q96)))
+
+  let amount0 = 0n
+  let amount1 = 0n
+
+  if (sqrtPriceX96 <= sqrtPriceLower) {
+    // All token0 (ETH)
+    amount0 = (liquidity * Q96 * (sqrtPriceUpper - sqrtPriceLower)) / (sqrtPriceUpper * sqrtPriceLower)
+  } else if (sqrtPriceX96 < sqrtPriceUpper) {
+    // Both tokens
+    amount0 = (liquidity * Q96 * (sqrtPriceUpper - sqrtPriceX96)) / (sqrtPriceUpper * sqrtPriceX96)
+    amount1 = (liquidity * (sqrtPriceX96 - sqrtPriceLower)) / Q96
+  } else {
+    // All token1 (ZEUS)
+    amount1 = (liquidity * (sqrtPriceUpper - sqrtPriceLower)) / Q96
   }
 
-  // If current price is below range: all token1 (ZEUS)
-  if (currentTick < tickLower) {
-    return {
-      amount0: 0n,
-      amount1: liquidity, // Simplified
-    }
-  }
-
-  // If current price is above range: all token0 (ETH)
-  if (currentTick >= tickUpper) {
-    return {
-      amount0: liquidity / 1000000n, // Simplified conversion
-      amount1: 0n,
-    }
-  }
-
-  // If in range: both tokens
-  // This is a very rough approximation
-  const rangeWidth = tickUpper - tickLower
-  const positionInRange = currentTick - tickLower
-
-  const ratio = positionInRange / rangeWidth
-
-  return {
-    amount0: (liquidity * BigInt(Math.floor(ratio * 1000))) / 1000000n,
-    amount1: (liquidity * BigInt(Math.floor((1 - ratio) * 1000))) / 1000n,
-  }
+  return { amount0, amount1 }
 }
 
-// ============================================================================
-// Enrich Position with Market Data
-// ============================================================================
+/**
+ * Get sqrtPriceX96 from pool tick (approximation for amount calculation)
+ */
+function tickToSqrtPriceX96(tick: number): bigint {
+  const Q96 = 2n ** 96n
+  return BigInt(Math.floor(Math.sqrt(1.0001 ** tick) * Number(Q96)))
+}
 
 /**
- * Convert PositionInfo to Position with USD values and market data
+ * Enrich a V4 position with USD values and market data
  */
-export async function enrichPosition(
-  positionInfo: PositionInfo,
+export async function buildPosition(
+  tokenId: bigint,
+  tickLower: number,
+  tickUpper: number,
+  liquidity: bigint,
   currentTick: number,
   ethPriceUsd: number,
   zeusPriceUsd: number,
-  totalSupplyRaw: bigint
+  totalSupplyRaw: bigint,
+  owner: string
 ): Promise<Position> {
-  // Calculate token amounts (simplified)
-  const { amount0, amount1 } = calculatePositionAmounts(
-    positionInfo.liquidity,
-    positionInfo.tickLower,
-    positionInfo.tickUpper,
-    currentTick
-  )
+  const sqrtPriceCurrent = tickToSqrtPriceX96(currentTick)
+  const { amount0, amount1 } = getAmountsForLiquidity(sqrtPriceCurrent, tickLower, tickUpper, liquidity)
 
-  // Calculate USD values
-  const amount0Human = Number(amount0) / 10 ** 18 // ETH decimals
-  const amount1Human = Number(amount1) / 10 ** ZEUS_DECIMALS // ZEUS decimals
-
+  const amount0Human = Number(amount0) / 1e18
+  const amount1Human = Number(amount1) / (10 ** ZEUS_DECIMALS)
   const totalValueUsd = amount0Human * ethPriceUsd + amount1Human * zeusPriceUsd
 
-  // Calculate MCAP range
-  const minMcap = tickToMcap(positionInfo.tickLower, ethPriceUsd, totalSupplyRaw)
-  const maxMcap = tickToMcap(positionInfo.tickUpper, ethPriceUsd, totalSupplyRaw)
+  const minMcap = tickToMcap(tickLower, ethPriceUsd, totalSupplyRaw)
+  const maxMcap = tickToMcap(tickUpper, ethPriceUsd, totalSupplyRaw)
+  const minPriceEth = tickToZeusEthPrice(tickLower)
+  const maxPriceEth = tickToZeusEthPrice(tickUpper)
 
-  // Calculate price range in ETH
-  const minPriceEth = tickToZeusEthPrice(positionInfo.tickLower)
-  const maxPriceEth = tickToZeusEthPrice(positionInfo.tickUpper)
-
-  // Determine position status
   let status: "in-range" | "out-of-range" | "closed"
-  if (positionInfo.liquidity === 0n) {
+  if (liquidity === 0n) {
     status = "closed"
-  } else if (currentTick >= positionInfo.tickLower && currentTick < positionInfo.tickUpper) {
+  } else if (currentTick >= tickLower && currentTick < tickUpper) {
     status = "in-range"
   } else {
     status = "out-of-range"
   }
 
-  // Calculate uncollected fees USD value
-  const tokensOwed0Human = Number(positionInfo.tokensOwed0) / 10 ** 18
-  const tokensOwed1Human = Number(positionInfo.tokensOwed1) / 10 ** ZEUS_DECIMALS
-  const uncollectedFeesUsd = tokensOwed0Human * ethPriceUsd + tokensOwed1Human * zeusPriceUsd
-
   return {
-    tokenId: positionInfo.tokenId,
-    owner: "", // Will be set by caller
-    tickLower: positionInfo.tickLower,
-    tickUpper: positionInfo.tickUpper,
-    liquidity: positionInfo.liquidity,
-    feeGrowthInside0LastX128: positionInfo.feeGrowthInside0LastX128,
-    feeGrowthInside1LastX128: positionInfo.feeGrowthInside1LastX128,
-    tokensOwed0: positionInfo.tokensOwed0,
-    tokensOwed1: positionInfo.tokensOwed1,
+    tokenId,
+    owner,
+    tickLower,
+    tickUpper,
+    liquidity,
+    feeGrowthInside0LastX128: 0n,
+    feeGrowthInside1LastX128: 0n,
+    tokensOwed0: 0n,
+    tokensOwed1: 0n,
     amount0,
     amount1,
     totalValueUsd,
@@ -263,6 +242,6 @@ export async function enrichPosition(
     maxMcap,
     minPriceEth,
     maxPriceEth,
-    uncollectedFeesUsd,
+    uncollectedFeesUsd: 0,
   }
 }
