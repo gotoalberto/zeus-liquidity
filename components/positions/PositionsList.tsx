@@ -1,86 +1,70 @@
 "use client"
 
-import { usePositions, usePortfolioValue } from "@/hooks/usePositions"
+import { usePositions } from "@/hooks/usePositions"
+import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 import { PositionCard } from "./PositionCard"
 import { useAccount } from "wagmi"
 
-function formatCurrency(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`
-  return `$${value.toFixed(2)}`
-}
+const EmptyState = ({ text, sub }: { text: string; sub?: string }) => (
+  <div style={{
+    background: "var(--glass-bg)", border: "1px solid var(--glass-border-bright)",
+    borderRadius: "1.25rem", padding: "3rem 2rem", textAlign: "center",
+    backdropFilter: "blur(12px)",
+  }}>
+    <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.5rem" }}>{text}</p>
+    {sub && <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>{sub}</p>}
+  </div>
+)
 
-const emptyState = (text: string, sub?: string) => (
-  <div className="card-zeus p-8 text-center">
-    <div style={{ maxWidth: 400, margin: "0 auto" }}>
-      <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.5rem" }}>{text}</p>
-      {sub && <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>{sub}</p>}
+const SkeletonCard = () => (
+  <div style={{
+    background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
+    borderRadius: "1.25rem", padding: "1.5rem",
+    display: "flex", flexDirection: "column", gap: "1.25rem",
+  }}>
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <div className="skeleton" style={{ height: 20, width: 120, borderRadius: 6 }} />
+      <div className="skeleton" style={{ height: 28, width: 80, borderRadius: 6 }} />
     </div>
+    <div className="skeleton" style={{ height: 68, width: "100%", borderRadius: 12 }} />
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+      <div className="skeleton" style={{ height: 72, borderRadius: 12 }} />
+      <div className="skeleton" style={{ height: 72, borderRadius: 12 }} />
+    </div>
+    <div className="skeleton" style={{ height: 60, width: "100%", borderRadius: 12 }} />
   </div>
 )
 
 export function PositionsList() {
   const { isConnected } = useAccount()
   const { data: positions, isLoading, error } = usePositions()
-  const { totalValueUsd, totalFeesUsd, positionCount } = usePortfolioValue()
+  const { data: priceData } = useZeusPrice()
+  const { data: ethPriceUsd } = useEthPrice()
 
-  if (!isConnected) return emptyState("Connect your wallet", "Connect your wallet to view your liquidity positions")
+  if (!isConnected) return <EmptyState text="Connect your wallet" sub="Connect your wallet to view your liquidity positions" />
+  if (isLoading) return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  )
+  if (error) return <EmptyState text="Failed to load positions" sub={(error as Error).message} />
+  if (!positions || positions.length === 0) return (
+    <EmptyState text="No positions yet" sub="Add liquidity to the ZEUS/ETH pool to start earning fees" />
+  )
 
-  if (isLoading) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <div className="card-zeus p-6">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem" }}>
-            {[1, 2, 3].map((i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <div className="skeleton h-3 w-24" />
-                <div className="skeleton h-7 w-32" />
-              </div>
-            ))}
-          </div>
-        </div>
-        {[1, 2].map((i) => (
-          <div key={i} className="card-zeus p-6" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div className="skeleton h-5 w-48" />
-            <div className="skeleton h-20 w-full" />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-              <div className="skeleton h-16 w-full" />
-              <div className="skeleton h-16 w-full" />
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (error) return emptyState("Failed to load positions", (error as Error).message)
-
-  if (!positions || positions.length === 0) return emptyState("No positions yet", "Add liquidity to the ZEUS/ETH pool to start earning fees")
+  const eth = ethPriceUsd ?? 0
+  const zeus = priceData?.priceUsd ?? 0
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* Portfolio Summary */}
-      <div className="card-zeus p-6" style={{ position: "sticky", top: 80, zIndex: 10 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(1, 1fr)", gap: "1.5rem" }} className="md:grid-cols-3">
-          {[
-            { label: "Total Portfolio Value", value: formatCurrency(totalValueUsd), color: "#fff" },
-            { label: "Uncollected Fees", value: formatCurrency(totalFeesUsd), color: "#22c55e" },
-            { label: "Active Positions", value: String(positionCount), color: "#4394f4" },
-          ].map(({ label, value, color }) => (
-            <div key={label}>
-              <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.3rem" }}>{label}</p>
-              <p style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", color, letterSpacing: "0.01em" }}>{value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Position Cards */}
       {positions.map((position) => (
         <PositionCard
           key={position.tokenId.toString()}
           position={position}
-          onCollectFees={(tokenId) => console.log("Collect fees for position", tokenId)}
+          ethPriceUsd={eth}
+          zeusPriceUsd={zeus}
+          onCollectFees={(tokenId) => console.log("Collect fees", tokenId)}
           onClosePosition={(tokenId) => console.log("Close position", tokenId)}
         />
       ))}
