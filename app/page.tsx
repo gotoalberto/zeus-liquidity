@@ -15,7 +15,13 @@ export default function Home() {
   const { open } = useAppKit()
   const { address, isConnected } = useAccount()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [prefillMcap, setPrefillMcap] = useState<{ min: number; max: number } | null>(null)
   const walletLabel = isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect Wallet"
+
+  function handleJoinRange(mcapLow: number, mcapHigh: number) {
+    setPrefillMcap({ min: mcapLow, max: mcapHigh })
+    document.getElementById("addlp")?.scrollIntoView({ behavior: "smooth" })
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
@@ -187,7 +193,7 @@ export default function Home() {
             </p>
           </div>
           <div className="card-zeus" style={{ padding: "1.5rem" }}>
-            <LiquidityDepthChart />
+            <LiquidityDepthChart onJoinRange={handleJoinRange} />
           </div>
         </div>
       </section>
@@ -232,7 +238,7 @@ export default function Home() {
             <h2 className="section-title">Add Liquidity</h2>
           </div>
           <div className="card-zeus" style={{ padding: "2rem 2.5rem" }}>
-            <AddLiquidityForm />
+            <AddLiquidityForm initialMinMcap={prefillMcap?.min} initialMaxMcap={prefillMcap?.max} />
           </div>
         </div>
       </section>

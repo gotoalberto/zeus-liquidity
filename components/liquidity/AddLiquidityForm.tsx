@@ -172,7 +172,12 @@ function encodeMintUnlockData({
 
 const ETH_ADDRESS = "0x0000000000000000000000000000000000000000" as const
 
-export function AddLiquidityForm() {
+interface AddLiquidityFormProps {
+  initialMinMcap?: number
+  initialMaxMcap?: number
+}
+
+export function AddLiquidityForm({ initialMinMcap, initialMaxMcap }: AddLiquidityFormProps = {}) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   const { data: priceData } = useZeusPrice()
@@ -380,7 +385,7 @@ export function AddLiquidityForm() {
       {/* Range Selector */}
       <div>
         <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>Select Range</p>
-        <RangeSelector onRangeChange={setSelectedRange} />
+        <RangeSelector onRangeChange={setSelectedRange} initialMinMcap={initialMinMcap} initialMaxMcap={initialMaxMcap} />
       </div>
 
       <div className="divider" />

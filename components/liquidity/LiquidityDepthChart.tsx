@@ -13,6 +13,22 @@ interface V4Position {
   liquidity: string
 }
 
+interface DrawnBand {
+  top: number
+  bottom: number
+  mcapLow: number
+  mcapHigh: number
+  totalLiquidity: bigint
+  count: number
+  inRange: boolean
+}
+
+interface TooltipInfo {
+  x: number
+  y: number
+  band: DrawnBand
+}
+
 function formatMcap(value: number): string {
   if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
@@ -20,17 +36,33 @@ function formatMcap(value: number): string {
   return `$${value.toFixed(0)}`
 }
 
+function fmtLiquidity(liq: bigint): string {
+  const n = Number(liq)
+  if (n >= 1e18) return `${(n / 1e18).toFixed(2)}E`
+  if (n >= 1e15) return `${(n / 1e15).toFixed(2)}P`
+  if (n >= 1e12) return `${(n / 1e12).toFixed(2)}T`
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`
+  return n.toLocaleString()
+}
+
 const TIMEFRAMES = [
   { label: "7D", days: 7 },
   { label: "30D", days: 30 },
 ] as const
 
-export function LiquidityDepthChart() {
+interface LiquidityDepthChartProps {
+  onJoinRange?: (mcapLow: number, mcapHigh: number) => void
+}
+
+export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null)
+  const drawnBandsRef = useRef<DrawnBand[]>([])
   const [days, setDays] = useState(7)
+  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null)
 
   const { data: ohlcData, isLoading: chartLoading } = useZeusOHLC(days)
   const { data: priceData } = useZeusPrice()
@@ -137,14 +169,71 @@ export function LiquidityDepthChart() {
     canvas.height = rect.height
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    const priceScale = chartRef.current.priceScale("right")
-    const timeScale = chartRef.current.timeScale()
-
-    // Get the visible price range from coordinate conversion
-    // Use the series to convert price → y coordinate
     const series = candlestickSeriesRef.current
     if (!series) return
 
+    // Collect valid rects for all positions
+    type RawBand = { top: number; bottom: number; mcapLow: number; mcapHigh: number; liq: bigint; inRange: boolean }
+    const rawBands: RawBand[] = []
+
+    for (const pos of positionsData.positions) {
+      if (pos.tickLower >= pos.tickUpper) continue
+      try {
+        const mcapLower = tickToMcap(pos.tickLower, ethPriceUsd, totalSupplyRaw)
+        const mcapUpper = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
+
+        const yUpper = series.priceToCoordinate(mcapUpper)
+        const yLower = series.priceToCoordinate(mcapLower)
+
+        if (yUpper === null || yLower === null) continue
+
+        const top = Math.min(yUpper, yLower)
+        const bottom = Math.max(yUpper, yLower)
+        const height = bottom - top
+
+        if (height < 2) continue
+
+        const currentMcap = priceData?.marketCapUsd ?? 0
+        const inRange = currentMcap >= mcapLower && currentMcap <= mcapUpper
+
+        rawBands.push({ top, bottom, mcapLow: mcapLower, mcapHigh: mcapUpper, liq: BigInt(pos.liquidity), inRange })
+      } catch {
+        // ignore positions with invalid ticks
+      }
+    }
+
+    // Sort by top ascending, then merge overlapping bands
+    rawBands.sort((a, b) => a.top - b.top)
+
+    const merged: DrawnBand[] = []
+    for (const rb of rawBands) {
+      if (merged.length > 0) {
+        const last = merged[merged.length - 1]
+        if (rb.top <= last.bottom) {
+          // overlaps — merge
+          last.bottom = Math.max(last.bottom, rb.bottom)
+          last.mcapLow = Math.min(last.mcapLow, rb.mcapLow)
+          last.mcapHigh = Math.max(last.mcapHigh, rb.mcapHigh)
+          last.totalLiquidity += rb.liq
+          last.count += 1
+          last.inRange = last.inRange || rb.inRange
+          continue
+        }
+      }
+      merged.push({
+        top: rb.top,
+        bottom: rb.bottom,
+        mcapLow: rb.mcapLow,
+        mcapHigh: rb.mcapHigh,
+        totalLiquidity: rb.liq,
+        count: 1,
+        inRange: rb.inRange,
+      })
+    }
+
+    drawnBandsRef.current = merged
+
+    // Draw each original position band (not the merged ones — keep individual visuals)
     for (const pos of positionsData.positions) {
       if (pos.tickLower >= pos.tickUpper) continue
       try {
@@ -171,7 +260,6 @@ export function LiquidityDepthChart() {
         ctx.fillStyle = color
         ctx.fillRect(0, top, canvas.width - 90, height)
 
-        // Draw top/bottom border lines
         ctx.strokeStyle = border
         ctx.lineWidth = 1
         ctx.setLineDash([4, 3])
@@ -202,8 +290,31 @@ export function LiquidityDepthChart() {
     return () => chartRef.current?.timeScale().unsubscribeVisibleTimeRangeChange(sub as any)
   }, [positionsData, ethPriceUsd, totalSupplyRaw, priceData])
 
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mouseY = e.clientY - rect.top
+    const mouseX = e.clientX - rect.left
+    const band = drawnBandsRef.current.find(b => mouseY >= b.top && mouseY <= b.bottom)
+    setTooltip(band ? { x: mouseX, y: mouseY, band } : null)
+  }
+
+  function handlePointerLeave() {
+    setTooltip(null)
+  }
+
   const isLoading = chartLoading || posLoading
   const posCount = positionsData?.positions?.length ?? 0
+
+  // Tooltip positioning — stays within container bounds
+  const TOOLTIP_W = 200
+  const TOOLTIP_H = onJoinRange ? 110 : 88
+  let tooltipLeft = 0
+  let tooltipTop = 0
+  if (tooltip) {
+    tooltipLeft = Math.min(Math.max(tooltip.x - TOOLTIP_W / 2, 8), (chartContainerRef.current?.clientWidth ?? 400) - TOOLTIP_W - 8)
+    tooltipTop = tooltip.y - TOOLTIP_H - 14
+    if (tooltipTop < 8) tooltipTop = tooltip.y + 14
+  }
 
   return (
     <div style={{ width: "100%" }}>
@@ -263,8 +374,80 @@ export function LiquidityDepthChart() {
         <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
         <canvas
           ref={overlayRef}
-          style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", width: "100%", height: "100%" }}
+          style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", zIndex: 1, width: "100%", height: "100%" }}
         />
+        {/* Invisible pointer-capture div (preserves chart crosshair) */}
+        <div
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+          onPointerDown={handlePointerMove}
+          style={{
+            position: "absolute",
+            inset: 0,
+            cursor: tooltip ? "crosshair" : "default",
+            zIndex: 2,
+          }}
+        />
+        {/* Tooltip */}
+        {tooltip && (
+          <div
+            style={{
+              position: "absolute",
+              left: tooltipLeft,
+              top: tooltipTop,
+              zIndex: 10,
+              pointerEvents: "none",
+              background: "rgba(10,15,30,0.92)",
+              border: `1px solid ${tooltip.band.inRange ? "rgba(240,230,78,0.4)" : "rgba(67,148,244,0.4)"}`,
+              borderTop: `2px solid ${tooltip.band.inRange ? "#f0e64e" : "#4394f4"}`,
+              borderRadius: "0.625rem",
+              padding: "0.625rem 0.875rem",
+              backdropFilter: "blur(12px)",
+              minWidth: TOOLTIP_W,
+              userSelect: "none",
+            }}
+          >
+            {tooltip.band.count > 1 && (
+              <div style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: "0.4rem" }}>
+                {tooltip.band.count} positions merged
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.3rem" }}>
+              <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>Liquidity</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", color: "#fff" }}>{fmtLiquidity(tooltip.band.totalLiquidity)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>Range</span>
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: tooltip.band.inRange ? "#f0e64e" : "#4394f4", fontFamily: "monospace" }}>
+                {formatMcap(tooltip.band.mcapLow)} → {formatMcap(tooltip.band.mcapHigh)}
+              </span>
+            </div>
+            {onJoinRange && (
+              <button
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  onJoinRange(tooltip.band.mcapLow, tooltip.band.mcapHigh)
+                }}
+                style={{
+                  marginTop: "0.6rem",
+                  width: "100%",
+                  padding: "0.4rem 0.5rem",
+                  borderRadius: "0.5rem",
+                  border: `1px solid ${tooltip.band.inRange ? "rgba(240,230,78,0.5)" : "rgba(67,148,244,0.5)"}`,
+                  background: tooltip.band.inRange ? "rgba(240,230,78,0.12)" : "rgba(67,148,244,0.12)",
+                  color: tooltip.band.inRange ? "#f0e64e" : "#4394f4",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "0.78rem",
+                  cursor: "pointer",
+                  pointerEvents: "auto",
+                  transition: "all 0.15s",
+                }}
+              >
+                Join this range
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

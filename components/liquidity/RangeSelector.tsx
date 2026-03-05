@@ -8,6 +8,8 @@ import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 
 interface RangeSelectorProps {
   onRangeChange: (range: PriceRange) => void
+  initialMinMcap?: number
+  initialMaxMcap?: number
 }
 
 function formatCurrency(value: number): string {
@@ -17,13 +19,19 @@ function formatCurrency(value: number): string {
   return `$${value.toFixed(2)}`
 }
 
-export function RangeSelector({ onRangeChange }: RangeSelectorProps) {
+export function RangeSelector({ onRangeChange, initialMinMcap, initialMaxMcap }: RangeSelectorProps) {
   const { data: priceData } = useZeusPrice()
   const { data: ethPriceUsd } = useEthPrice()
 
-  const [minMcap, setMinMcap] = useState<string>("")
-  const [maxMcap, setMaxMcap] = useState<string>("")
+  const [minMcap, setMinMcap] = useState<string>(initialMinMcap ? initialMinMcap.toFixed(0) : "")
+  const [maxMcap, setMaxMcap] = useState<string>(initialMaxMcap ? initialMaxMcap.toFixed(0) : "")
   const [showAdvanced, setShowAdvanced] = useState(false)
+
+  // Apply externally injected initial values when they change
+  useEffect(() => {
+    if (initialMinMcap) setMinMcap(initialMinMcap.toFixed(0))
+    if (initialMaxMcap) setMaxMcap(initialMaxMcap.toFixed(0))
+  }, [initialMinMcap, initialMaxMcap])
 
   useEffect(() => {
     if (!priceData || !ethPriceUsd || !minMcap || !maxMcap) return
