@@ -69,7 +69,7 @@ function ProfileClient({ address }: { address: string }) {
   const { data: positionsData, isLoading: posLoading } = useQuery({
     queryKey: ["profile-positions", address],
     queryFn: async () => {
-      const res = await fetch(`/api/positions/${address}`)
+      const res = await fetch(`/api/positions/${address}`, { cache: "no-store" })
       if (!res.ok) throw new Error("Failed to fetch positions")
       const json = await res.json()
       const positions: Position[] = (json.positions ?? []).map(
@@ -77,7 +77,7 @@ function ProfileClient({ address }: { address: string }) {
       )
       return { positions, cachedAt: json.cachedAt as string }
     },
-    staleTime: 5 * 60_000,
+    staleTime: 0,
   })
 
   const { data: feesData } = useQuery({

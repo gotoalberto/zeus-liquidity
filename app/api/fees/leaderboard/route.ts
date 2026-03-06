@@ -29,7 +29,7 @@ import { waitUntil } from "@vercel/functions"
 export const runtime = "nodejs"
 export const maxDuration = 300 // allow up to 5 min for background compute
 
-const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
 const ALCHEMY_URL = `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
 const V4_LAUNCH_BLOCK = 21355000
 const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"

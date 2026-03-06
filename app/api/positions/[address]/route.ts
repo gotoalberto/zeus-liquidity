@@ -18,6 +18,7 @@ import {
 import { getZeusPriceData, getEthPriceUsd } from "@/lib/services/coingecko"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function GET(
   _req: NextRequest,
