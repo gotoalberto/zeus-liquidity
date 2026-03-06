@@ -30,8 +30,10 @@ interface TooltipInfo {
 }
 
 function formatMcap(value: number): string {
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
+  if (!isFinite(value) || value <= 0) return "—"
+  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(1)}T`
+  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`
   return `$${value.toFixed(0)}`
 }
@@ -184,6 +186,9 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
         const mcapFromTickUpper = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
         const mcapLow = Math.min(mcapFromTickLower, mcapFromTickUpper)
         const mcapHigh = Math.max(mcapFromTickLower, mcapFromTickUpper)
+
+        // Skip positions with absurd mcap values (bad ticks)
+        if (!isFinite(mcapLow) || !isFinite(mcapHigh) || mcapHigh > 1e13) continue
 
         const yHigh = series.priceToCoordinate(mcapHigh)
         const yLow = series.priceToCoordinate(mcapLow)
@@ -422,14 +427,8 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
               userSelect: "none",
             }}
           >
-            {tooltip.band.count > 1 && (
-              <div style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: "0.4rem" }}>
-                {tooltip.band.count} positions merged
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.3rem" }}>
-              <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>Liquidity</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", color: "#fff" }}>{fmtLiquidity(tooltip.band.totalLiquidity)}</span>
+            <div style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: "0.4rem" }}>
+              {tooltip.band.count} {tooltip.band.count === 1 ? "position" : "positions"}
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>Range</span>
