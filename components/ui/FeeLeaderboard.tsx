@@ -6,8 +6,8 @@ import { useAccount } from "wagmi"
 interface LeaderboardEntry {
   rank: number
   address: string
-  totalUsd: number
-  collections: number
+  uncollectedFeesUsd: number
+  positionCount: number
 }
 
 function fmtUsd(value: number): string {
@@ -50,7 +50,7 @@ export function FeeLeaderboard() {
 
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
           <p style={{ fontFamily: "var(--font-body)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "0.4rem" }}>
-            All time
+            Live rankings
           </p>
           <h2 className="section-title">Top Defenders</h2>
         </div>
@@ -133,7 +133,7 @@ export function FeeLeaderboard() {
                         )}
                       </div>
                       <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.1rem" }}>
-                        {entry.collections} collection{entry.collections !== 1 ? "s" : ""}
+                        {entry.positionCount} position{entry.positionCount !== 1 ? "s" : ""}
                       </div>
                     </div>
 
@@ -143,10 +143,10 @@ export function FeeLeaderboard() {
                         fontFamily: "var(--font-display)", fontSize: "1.1rem",
                         color: rankStyle ? rankStyle.color : "#4ade80",
                       }}>
-                        {fmtUsd(entry.totalUsd)}
+                        {fmtUsd(entry.uncollectedFeesUsd)}
                       </div>
                       <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "0.1rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                        fees earned
+                        uncollected fees
                       </div>
                     </div>
 
