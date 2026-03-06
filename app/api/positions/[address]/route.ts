@@ -7,7 +7,6 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { isAddress } from "viem"
-import { getDb, ensureSchema } from "@/lib/db"
 import {
   getUserPositionTokenIds,
   getCurrentPoolTick,
@@ -19,10 +18,8 @@ import { getZeusPriceData, getEthPriceUsd } from "@/lib/services/coingecko"
 
 export const runtime = "nodejs"
 
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
-
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ) {
   const { address } = await params
@@ -32,31 +29,6 @@ export async function GET(
   }
 
   const normalizedAddress = address.toLowerCase()
-  const forceRefresh = req.nextUrl.searchParams.get("refresh") === "1"
-
-  // Check DB cache first (skip if ?refresh=1)
-  if (process.env.DATABASE_URL && !forceRefresh) {
-    try {
-      await ensureSchema()
-      const db = getDb()
-      const cached = await db.query(
-        `SELECT positions, computed_at FROM zeus_user_positions_cache WHERE address = $1`,
-        [normalizedAddress]
-      )
-      if (
-        cached.rows.length > 0 &&
-        new Date(cached.rows[0].computed_at) > new Date(Date.now() - CACHE_TTL_MS)
-      ) {
-        return NextResponse.json({
-          positions: cached.rows[0].positions,
-          cachedAt: cached.rows[0].computed_at,
-          cached: true,
-        })
-      }
-    } catch (err) {
-      console.error("Cache read error:", err)
-    }
-  }
 
   try {
     // Fetch price data and chain data in parallel
@@ -95,22 +67,6 @@ export async function GET(
     )
 
     const serialized = positions.map(serializePosition)
-
-    // Persist to DB cache
-    if (process.env.DATABASE_URL) {
-      try {
-        const db = getDb()
-        await db.query(
-          `INSERT INTO zeus_user_positions_cache (address, positions, computed_at)
-           VALUES ($1, $2, NOW())
-           ON CONFLICT (address) DO UPDATE
-           SET positions = EXCLUDED.positions, computed_at = EXCLUDED.computed_at`,
-          [normalizedAddress, JSON.stringify(serialized)]
-        )
-      } catch (err) {
-        console.error("Cache write error:", err)
-      }
-    }
 
     return NextResponse.json({
       positions: serialized,
