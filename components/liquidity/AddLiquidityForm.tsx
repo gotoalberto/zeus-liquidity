@@ -409,7 +409,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ETH Amount</label>
                 <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-                  Balance: {ethBalanceNum.toFixed(6)} ETH
+                  Balance: {ethBalanceNum.toFixed(6)} ETH{ethPriceUsd ? ` (≈ $${(ethBalanceNum * ethPriceUsd).toFixed(2)})` : ""}
                 </span>
               </div>
               <div style={{ position: "relative" }}>
@@ -442,7 +442,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ZEUS Amount</label>
                 <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-                  Balance: {fmtZeus(zeusBalanceNum)} ZEUS
+                  Balance: {fmtZeus(zeusBalanceNum)} ZEUS{priceData ? ` (≈ $${(zeusBalanceNum * priceData.priceUsd).toFixed(2)})` : ""}
                 </span>
               </div>
               <div style={{ position: "relative" }}>
