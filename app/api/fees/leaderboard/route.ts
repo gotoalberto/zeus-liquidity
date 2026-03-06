@@ -328,21 +328,49 @@ async function buildLeaderboard() {
   }
 
   // ── Step 6: aggregate total fees per owner ────────────────────────────────────
-  // totalFeesUsd = accumulated (already collected historically) + pending (uncollected now)
-  const ownerFees = new Map<string, { totalFeesUsd: number; positions: number }>()
+  // For each owner with at least one active position, sum:
+  //   - accumulated_usd from ALL their historical snapshots (including closed positions)
+  //   - pending_usd from currently active positions only
 
-  for (const snap of newSnapshots) {
-    const totalFeesUsd = snap.accumulatedUsd + snap.pendingUsd
-    const cur = ownerFees.get(snap.owner) ?? { totalFeesUsd: 0, positions: 0 }
-    ownerFees.set(snap.owner, { totalFeesUsd: cur.totalFeesUsd + totalFeesUsd, positions: cur.positions + 1 })
-  }
-
-  // Include active owners with no fee data yet (pending computed but no snapshot match)
+  // Build active owner → active position count map
+  const activeOwnerPositions = new Map<string, number>()
   for (const { idx } of activePositions) {
     const owner = flat[idx].owner
-    if (!ownerFees.has(owner)) {
-      ownerFees.set(owner, { totalFeesUsd: 0, positions: 1 })
+    activeOwnerPositions.set(owner, (activeOwnerPositions.get(owner) ?? 0) + 1)
+  }
+
+  // Load full historical accumulated_usd per owner from DB (all tokens, including closed ones)
+  const ownerHistorical = new Map<string, number>()
+  if (db && activeOwnerPositions.size > 0) {
+    try {
+      const owners = [...activeOwnerPositions.keys()]
+      const rows = await db.query(
+        `SELECT owner, SUM(accumulated_usd)::float AS total_accumulated
+         FROM zeus_position_fees_snapshot
+         WHERE owner = ANY($1)
+         GROUP BY owner`,
+        [owners]
+      )
+      for (const row of rows.rows) {
+        ownerHistorical.set(row.owner, parseFloat(row.total_accumulated) || 0)
+      }
+    } catch (e) {
+      console.error("Failed to load historical fees per owner:", e)
     }
+  }
+
+  // Sum pending fees from active positions (newSnapshots only covers currently active tokens)
+  const ownerPending = new Map<string, number>()
+  for (const snap of newSnapshots) {
+    ownerPending.set(snap.owner, (ownerPending.get(snap.owner) ?? 0) + snap.pendingUsd)
+  }
+
+  // Final aggregation: only owners with active positions appear in leaderboard
+  const ownerFees = new Map<string, { totalFeesUsd: number; positions: number }>()
+  for (const [owner, positions] of activeOwnerPositions) {
+    const accumulated = ownerHistorical.get(owner) ?? 0
+    const pending     = ownerPending.get(owner) ?? 0
+    ownerFees.set(owner, { totalFeesUsd: accumulated + pending, positions })
   }
 
   return [...ownerFees.entries()]
