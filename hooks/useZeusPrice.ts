@@ -45,6 +45,7 @@ export function useZeusOHLC(days: number = 7) {
     },
     staleTime: 5 * 60_000, // 5 minutes
     gcTime: 10 * 60_000, // 10 minutes
+    refetchInterval: 5 * 60_000, // Refetch every 5 minutes
   })
 }
 
