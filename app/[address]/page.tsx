@@ -91,12 +91,22 @@ function ProfileClient({ address }: { address: string }) {
     staleTime: 60_000,
   })
 
+  const { data: feeHistoryData } = useQuery({
+    queryKey: ["profile-fee-history", address],
+    queryFn: async () => {
+      const res = await fetch(`/api/fees/history/${address}`)
+      if (!res.ok) return { accumulatedUsd: 0, pendingUsd: 0, totalUsd: 0 }
+      return res.json() as Promise<{ accumulatedUsd: number; pendingUsd: number; totalUsd: number }>
+    },
+    staleTime: 5 * 60_000,
+  })
+
   const positions = positionsData?.positions ?? []
   const feeHistory = feesData ?? []
 
   const totalValueUsd = positions.reduce((s, p) => s + p.totalValueUsd, 0)
   const totalUncollectedUsd = positions.reduce((s, p) => s + p.uncollectedFeesUsd, 0)
-  const totalFeesEarnedUsd = feeHistory.reduce((s, f) => s + f.totalUsd, 0)
+  const totalFeesEarnedUsd = feeHistoryData?.totalUsd ?? feeHistory.reduce((s, f) => s + f.totalUsd, 0)
 
   // Get current tick from first position or 0
   const currentTick = 0 // not needed for display, only for in/out range (already computed server-side)
@@ -148,8 +158,7 @@ function ProfileClient({ address }: { address: string }) {
         }}>
           {[
             { label: "Total Value", value: fmtUsd(totalValueUsd), accent: "#4394f4" },
-            { label: "Uncollected Fees", value: fmtUsd(totalUncollectedUsd), accent: "#4ade80" },
-            { label: "Total Fees Earned", value: fmtUsd(totalFeesEarnedUsd), accent: "var(--highlight)" },
+            { label: "Fees Earned", value: fmtUsd(totalFeesEarnedUsd), accent: "#4ade80" },
             { label: "Positions", value: positions.length.toString(), accent: "var(--text-secondary)" },
           ].map(({ label, value, accent }) => (
             <div key={label} style={{
