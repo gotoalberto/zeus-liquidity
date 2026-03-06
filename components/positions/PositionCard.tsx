@@ -147,7 +147,7 @@ function fmtUsd(value: number): string {
 
 const STATUS = {
   "in-range":    { label: "In Range",     bg: "rgba(34,197,94,0.15)",  border: "rgba(34,197,94,0.35)",  text: "#4ade80" },
-  "out-of-range":{ label: "Out of Range", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.35)", text: "#fbbf24" },
+  "out-of-range":{ label: "Defense Line", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.35)", text: "#fbbf24" },
   "closed":      { label: "Closed",       bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.25)",text: "#94a3b8" },
 }
 
