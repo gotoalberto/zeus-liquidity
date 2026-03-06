@@ -20,7 +20,7 @@
 
 import { useState, useEffect } from "react"
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi"
-import { useQueryClient } from "@tanstack/react-query"
+import { useInvalidateCache } from "@/hooks/useInvalidateCache"
 import { parseUnits, formatUnits, erc20Abi, maxUint256, parseEther, encodeAbiParameters, encodePacked } from "viem"
 import { RangeSelector } from "./RangeSelector"
 import { PriceRange } from "@/types"
@@ -197,7 +197,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
   const chainId = useChainId()
   const { data: priceData } = useZeusPrice()
   const { data: ethPriceUsd } = useEthPrice()
-  const queryClient = useQueryClient()
+  const invalidateCache = useInvalidateCache()
 
   // Balances
   const { data: ethBalance } = useBalance({ address })
@@ -247,8 +247,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
       toast.success("Liquidity added successfully!")
       setEthAmount("")
       setZeusAmount("")
-      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
-      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
+      invalidateCache()
     }
   }, [isMintSuccess])
 

@@ -3,7 +3,7 @@
 import { Position } from "@/types"
 import { ZEUS_DECIMALS, UNISWAP_V4_POSITION_MANAGER, ZEUS_TOKEN_ADDRESS, POOL_FEE, POOL_TICK_SPACING, POOL_HOOKS_ADDRESS } from "@/lib/constants"
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract, useBalance } from "wagmi"
-import { useQueryClient } from "@tanstack/react-query"
+import { useInvalidateCache } from "@/hooks/useInvalidateCache"
 import { encodeAbiParameters, encodePacked, erc20Abi, parseUnits, formatUnits, maxUint256 } from "viem"
 import { toast } from "sonner"
 import { useEffect, useState } from "react"
@@ -185,7 +185,7 @@ const STATUS = {
 // ── Component ───────────────────────────────────────────────────────────────
 export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick, onSuccess }: PositionCardProps) {
   const { address } = useAccount()
-  const queryClient = useQueryClient()
+  const invalidateCache = useInvalidateCache()
   const s = STATUS[position.status]
 
   const { writeContract: writeClose, data: closeTxHash, isPending: isClosing } = useWriteContract()
@@ -249,8 +249,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
     if (isCloseSuccess) {
       toast.success("Position closed!")
       onSuccess?.()
-      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
-      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
+      invalidateCache()
     }
   }, [isCloseSuccess])
 
@@ -258,6 +257,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
     if (isCollectSuccess) {
       toast.success("Fees collected!")
       onSuccess?.()
+      invalidateCache()
       fetch("/api/fees/collect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -290,8 +290,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
       setAddEthAmount("")
       setAddZeusAmount("")
       setShowAddLiquidity(false)
-      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
-      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
+      invalidateCache()
       onSuccess?.()
     }
   }, [isAddMoreSuccess])
@@ -301,8 +300,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
       toast.success("Withdrawal successful!")
       setShowWithdraw(false)
       setWithdrawPct(25)
-      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
-      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
+      invalidateCache()
       onSuccess?.()
     }
   }, [isWithdrawSuccess])
