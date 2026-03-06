@@ -150,7 +150,7 @@ export function FeeLeaderboard() {
                         {fmtUsd(entry.uncollectedFeesUsd)}
                       </div>
                       <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "0.1rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                        uncollected fees
+                        fees earned
                       </div>
                     </div>
 

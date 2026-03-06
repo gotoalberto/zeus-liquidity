@@ -240,19 +240,15 @@ async function buildLeaderboard() {
     growthByRange.set(key, { g0: BigInt("0x" + h.slice(0, 64)), g1: BigInt("0x" + h.slice(64, 128)) })
   })
 
-  // Aggregate fees per owner — only include owners with at least one open position (liquidity > 0)
+  // ── Step 4: compute pending fees per active position ─────────────────────────
   const Q128 = 2n ** 128n
 
-  // Pre-seed only owners that have at least one open position
-  const ownerFees = new Map<string, { feesUsd: number; positions: number }>()
-  for (const { idx } of activePositions) {
-    const owner = flat[idx].owner
-    const cur = ownerFees.get(owner) ?? { feesUsd: 0, positions: 0 }
-    ownerFees.set(owner, { feesUsd: cur.feesUsd, positions: cur.positions + 1 })
-  }
+  // pendingByToken: tokenId → pendingFeesUsd right now
+  const pendingByToken = new Map<string, { owner: string; pendingUsd: number }>()
 
   activePositions.forEach(({ idx, tickLower, tickUpper, liquidity }, j) => {
     const owner  = flat[idx].owner
+    const tokenId = flat[idx].tokenId.toString()
     const posHex = posInfoResults[j] as string | null
     if (!posHex || posHex === "0x") return
     const ph = posHex.slice(2)
@@ -262,20 +258,100 @@ async function buildLeaderboard() {
     if (!growth) return
     const delta0 = (growth.g0 - fg0Last + Q128 * Q128) % (Q128 * Q128)
     const delta1 = (growth.g1 - fg1Last + Q128 * Q128) % (Q128 * Q128)
-    const feesUsd =
+    const pendingUsd =
       (Number((delta0 * liquidity) / Q128) / 1e18) * ethPriceUsd +
       (Number((delta1 * liquidity) / Q128) / 10 ** ZEUS_DECIMALS) * priceData.priceUsd
-    const cur = ownerFees.get(owner)!
-    ownerFees.set(owner, { feesUsd: cur.feesUsd + feesUsd, positions: cur.positions })
+    pendingByToken.set(tokenId, { owner, pendingUsd })
   })
 
+  // ── Step 5: load previous snapshots, detect collected fees, update DB ─────────
+  const db = process.env.DATABASE_URL ? getDb() : null
+
+  // Load previous snapshots for all active tokenIds
+  const tokenIds = [...pendingByToken.keys()]
+  const prevSnapshots = new Map<string, { pendingUsd: number; accumulatedUsd: number }>()
+
+  if (db && tokenIds.length > 0) {
+    try {
+      const rows = await db.query(
+        `SELECT token_id, pending_usd::float, accumulated_usd::float
+         FROM zeus_position_fees_snapshot
+         WHERE token_id = ANY($1)`,
+        [tokenIds]
+      )
+      for (const row of rows.rows) {
+        prevSnapshots.set(row.token_id, {
+          pendingUsd: parseFloat(row.pending_usd),
+          accumulatedUsd: parseFloat(row.accumulated_usd),
+        })
+      }
+    } catch (e) {
+      console.error("Failed to load fee snapshots:", e)
+    }
+  }
+
+  // Compute new accumulated values and upsert snapshots
+  const newSnapshots: { tokenId: string; owner: string; pendingUsd: number; accumulatedUsd: number }[] = []
+
+  for (const [tokenId, { owner, pendingUsd }] of pendingByToken) {
+    const prev = prevSnapshots.get(tokenId)
+    let accumulatedUsd = prev?.accumulatedUsd ?? 0
+
+    // If pending dropped since last snapshot, user collected fees — add the difference
+    if (prev && pendingUsd < prev.pendingUsd - 0.001) {
+      accumulatedUsd += prev.pendingUsd - pendingUsd
+    }
+
+    newSnapshots.push({ tokenId, owner, pendingUsd, accumulatedUsd })
+  }
+
+  if (db && newSnapshots.length > 0) {
+    try {
+      // Bulk upsert snapshots
+      const values = newSnapshots.map((_, i) =>
+        `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4}, NOW())`
+      ).join(", ")
+      const params = newSnapshots.flatMap(s => [s.tokenId, s.owner, s.pendingUsd, s.accumulatedUsd])
+      await db.query(
+        `INSERT INTO zeus_position_fees_snapshot (token_id, owner, pending_usd, accumulated_usd, updated_at)
+         VALUES ${values}
+         ON CONFLICT (token_id) DO UPDATE
+           SET owner = EXCLUDED.owner,
+               pending_usd = EXCLUDED.pending_usd,
+               accumulated_usd = EXCLUDED.accumulated_usd,
+               updated_at = EXCLUDED.updated_at`,
+        params
+      )
+    } catch (e) {
+      console.error("Failed to upsert fee snapshots:", e)
+    }
+  }
+
+  // ── Step 6: aggregate total fees per owner ────────────────────────────────────
+  // totalFeesUsd = accumulated (already collected historically) + pending (uncollected now)
+  const ownerFees = new Map<string, { totalFeesUsd: number; positions: number }>()
+
+  for (const snap of newSnapshots) {
+    const totalFeesUsd = snap.accumulatedUsd + snap.pendingUsd
+    const cur = ownerFees.get(snap.owner) ?? { totalFeesUsd: 0, positions: 0 }
+    ownerFees.set(snap.owner, { totalFeesUsd: cur.totalFeesUsd + totalFeesUsd, positions: cur.positions + 1 })
+  }
+
+  // Include active owners with no fee data yet (pending computed but no snapshot match)
+  for (const { idx } of activePositions) {
+    const owner = flat[idx].owner
+    if (!ownerFees.has(owner)) {
+      ownerFees.set(owner, { totalFeesUsd: 0, positions: 1 })
+    }
+  }
+
   return [...ownerFees.entries()]
-    .sort((a, b) => b[1].feesUsd - a[1].feesUsd)
+    .sort((a, b) => b[1].totalFeesUsd - a[1].totalFeesUsd)
     .slice(0, 10)
-    .map(([address, { feesUsd, positions }], i) => ({
+    .map(([address, { totalFeesUsd, positions }], i) => ({
       rank: i + 1,
       address,
-      uncollectedFeesUsd: feesUsd,
+      uncollectedFeesUsd: totalFeesUsd,
       positionCount: positions,
     }))
 }

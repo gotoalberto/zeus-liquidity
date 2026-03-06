@@ -64,4 +64,13 @@ export async function ensureSchema(): Promise<void> {
       computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS zeus_position_fees_snapshot (
+      token_id TEXT PRIMARY KEY,
+      owner TEXT NOT NULL,
+      pending_usd NUMERIC NOT NULL DEFAULT 0,
+      accumulated_usd NUMERIC NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `)
 }
