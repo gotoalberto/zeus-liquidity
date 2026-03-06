@@ -94,28 +94,40 @@ async function buildLeaderboard() {
   const ownerHex = UNISWAP_V4_POSITION_MANAGER.slice(2).toLowerCase().padStart(64, "0")
 
   // Step 1: scan Transfer events to get owner→tokenIds map
+  // Use Alchemy's getNFTsForContract or a single large getLogs call.
+  // The V4 PositionManager has few holders so all transfers fit in one call.
   const blockHex = await rpcSingle<string>("eth_blockNumber")
   const currentBlock = parseInt(blockHex, 16)
 
-  const chunks: { from: number; to: number }[] = []
-  for (let start = V4_LAUNCH_BLOCK; start <= currentBlock; start += CHUNK_SIZE) {
-    chunks.push({ from: start, to: Math.min(start + CHUNK_SIZE - 1, currentBlock) })
-  }
-
-  const allLogs: { topics: string[] }[] = []
-  for (let i = 0; i < chunks.length; i += PARALLEL) {
-    const batch = chunks.slice(i, i + PARALLEL)
-    const results = await Promise.all(
-      batch.map(({ from, to }) =>
-        rpcSingle<{ topics: string[] }[]>("eth_getLogs", [{
-          address: UNISWAP_V4_POSITION_MANAGER,
-          fromBlock: `0x${from.toString(16)}`,
-          toBlock: `0x${to.toString(16)}`,
-          topics: [TRANSFER_TOPIC],
-        }])
+  // Try a single call first (Alchemy allows up to 10k logs per call)
+  let allLogs: { topics: string[] }[] = []
+  try {
+    allLogs = await rpcSingle<{ topics: string[] }[]>("eth_getLogs", [{
+      address: UNISWAP_V4_POSITION_MANAGER,
+      fromBlock: `0x${V4_LAUNCH_BLOCK.toString(16)}`,
+      toBlock: "latest",
+      topics: [TRANSFER_TOPIC],
+    }])
+  } catch {
+    // If too many logs, fall back to chunked parallel fetch
+    const chunks: { from: number; to: number }[] = []
+    for (let start = V4_LAUNCH_BLOCK; start <= currentBlock; start += CHUNK_SIZE) {
+      chunks.push({ from: start, to: Math.min(start + CHUNK_SIZE - 1, currentBlock) })
+    }
+    for (let i = 0; i < chunks.length; i += PARALLEL) {
+      const batch = chunks.slice(i, i + PARALLEL)
+      const results = await Promise.all(
+        batch.map(({ from, to }) =>
+          rpcSingle<{ topics: string[] }[]>("eth_getLogs", [{
+            address: UNISWAP_V4_POSITION_MANAGER,
+            fromBlock: `0x${from.toString(16)}`,
+            toBlock: `0x${to.toString(16)}`,
+            topics: [TRANSFER_TOPIC],
+          }])
+        )
       )
-    )
-    for (const logs of results) allLogs.push(...logs)
+      for (const logs of results) allLogs.push(...logs)
+    }
   }
 
   const holdings = new Map<string, Set<string>>()
