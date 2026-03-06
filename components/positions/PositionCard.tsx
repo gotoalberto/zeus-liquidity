@@ -449,7 +449,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
               opacity: isBusy ? 0.5 : 1, transition: "all 0.15s",
             }}
           >
-            {showAddLiquidity ? "Cancel" : "Add Liquidity"}
+            {showAddLiquidity ? "Cancel" : "Add More Liquidity"}
           </button>
           <button
             onClick={handleClose}
