@@ -403,7 +403,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
         {[
           { symbol: "ETH",  amount: ethAmount.toFixed(6),  usdValue: ethValueUsd,  accentBg: "rgba(109,156,244,0.08)", accentBorder: "rgba(109,156,244,0.2)",  labelColor: "rgba(109,156,244,0.7)", valueColor: "#a8c8ff" },
-          { symbol: "ZEUS", amount: zeusAmount.toFixed(4), usdValue: zeusValueUsd, accentBg: "rgba(240,230,78,0.06)",  accentBorder: "rgba(240,230,78,0.18)", labelColor: "rgba(240,230,78,0.6)",  valueColor: "var(--highlight)" },
+          { symbol: "ZEUS", amount: fmtZeus(zeusAmount), usdValue: zeusValueUsd, accentBg: "rgba(240,230,78,0.06)",  accentBorder: "rgba(240,230,78,0.18)", labelColor: "rgba(240,230,78,0.6)",  valueColor: "var(--highlight)" },
         ].map(({ symbol, amount, usdValue, accentBg, accentBorder, labelColor, valueColor }) => (
           <div key={symbol} style={{ background: accentBg, border: `1px solid ${accentBorder}`, borderRadius: "0.875rem", padding: "0.875rem 1rem" }}>
             <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: labelColor, marginBottom: "0.3rem" }}>{symbol}</p>
