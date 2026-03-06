@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { createChart, ColorType, CandlestickSeries, type IChartApi, type ISeriesApi } from "lightweight-charts"
 import { useZeusOHLC, useZeusPrice } from "@/hooks/useZeusPrice"
 import { useEthPrice } from "@/hooks/useZeusPrice"
-import { tickToMcap, tickToZeusEthPrice } from "@/lib/uniswap/mcap"
+import { tickToMcap, tickToZeusEthPrice, mcapToTick } from "@/lib/uniswap/mcap"
 import { ZEUS_DECIMALS, ETH_DECIMALS } from "@/lib/constants"
 
 interface V4Position {
@@ -48,17 +48,20 @@ function fmtTvl(usd: number): string {
   return `$${usd.toFixed(0)}`
 }
 
+// In Uniswap V4, tick directly encodes price = 1.0001^tick = zeusRaw/ethRaw
+// sqrtPrice = sqrt(1.0001^tick), amounts in raw units
 function calcTvlUsd(liquidity: bigint, tickLower: number, tickUpper: number, currentTick: number, ethPriceUsd: number, zeusPriceUsd: number): number {
   try {
-    const DECIMAL_ADJ = 10 ** (ZEUS_DECIMALS - ETH_DECIMALS) // 1e-9
-    const sqrtPriceLow = Math.sqrt(tickToZeusEthPrice(tickLower) * DECIMAL_ADJ)
-    const sqrtPriceHigh = Math.sqrt(tickToZeusEthPrice(tickUpper) * DECIMAL_ADJ)
-    const sqrtPriceCur = Math.sqrt(tickToZeusEthPrice(currentTick) * DECIMAL_ADJ)
+    const sqrtPriceLow  = Math.sqrt(1.0001 ** tickLower)
+    const sqrtPriceHigh = Math.sqrt(1.0001 ** tickUpper)
+    const sqrtPriceCur  = Math.sqrt(1.0001 ** currentTick)
     const sqrtP = Math.max(sqrtPriceLow, Math.min(sqrtPriceCur, sqrtPriceHigh))
     const L = Number(liquidity)
-    const ethRaw = L * (1 / sqrtP - 1 / sqrtPriceHigh)
+    // ethRaw = amount0 = L * (1/sqrtP - 1/sqrtPriceHigh)
+    // zeusRaw = amount1 = L * (sqrtP - sqrtPriceLow)
+    const ethRaw  = L * (1 / sqrtP - 1 / sqrtPriceHigh)
     const zeusRaw = L * (sqrtP - sqrtPriceLow)
-    const ethHuman = ethRaw / 10 ** ETH_DECIMALS
+    const ethHuman  = ethRaw  / 10 ** ETH_DECIMALS
     const zeusHuman = zeusRaw / 10 ** ZEUS_DECIMALS
     const tvl = ethHuman * ethPriceUsd + zeusHuman * zeusPriceUsd
     return isFinite(tvl) && tvl > 0 ? tvl : 0
@@ -196,6 +199,7 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
     // Collect valid rects for all positions
     const currentMcap = priceData?.marketCapUsd ?? 0
     const zeusPriceUsd = priceData ? priceData.marketCapUsd / (Number(totalSupplyRaw) / 10 ** ZEUS_DECIMALS) : 0
+    const currentTick = currentMcap > 0 ? mcapToTick(currentMcap, ethPriceUsd, totalSupplyRaw) : 0
     type RawBand = { top: number; bottom: number; mcapLow: number; mcapHigh: number; liq: bigint; tvlUsd: number; inRange: boolean }
     const rawBands: RawBand[] = []
 
@@ -224,11 +228,7 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
 
         const inRange = currentMcap >= mcapLow && currentMcap <= mcapHigh
         const liq = BigInt(pos.liquidity)
-        // Derive current tick from current mcap
-        const currentTickApprox = inRange
-          ? Math.round((pos.tickLower + pos.tickUpper) / 2)
-          : currentMcap < mcapLow ? pos.tickLower : pos.tickUpper
-        const tvlUsd = calcTvlUsd(liq, pos.tickLower, pos.tickUpper, currentTickApprox, ethPriceUsd, zeusPriceUsd)
+        const tvlUsd = calcTvlUsd(liq, pos.tickLower, pos.tickUpper, currentTick, ethPriceUsd, zeusPriceUsd)
 
         rawBands.push({ top, bottom, mcapLow, mcapHigh, liq, tvlUsd, inRange })
       } catch {
