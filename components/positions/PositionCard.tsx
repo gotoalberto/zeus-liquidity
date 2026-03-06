@@ -80,6 +80,29 @@ function encodeCollectFeesUnlockData(tokenId: bigint, recipient: `0x${string}`):
   )
 }
 
+/** DECREASE_LIQUIDITY(delta>0) + TAKE_PAIR + SWEEP — partial withdrawal */
+function encodeDecreaseLiquidityUnlockData(
+  tokenId: bigint, liquidity: bigint, amount0Min: bigint, amount1Min: bigint, recipient: `0x${string}`
+): `0x${string}` {
+  const actions = encodePacked(["uint8", "uint8", "uint8"], [ACTIONS.DECREASE_LIQUIDITY, ACTIONS.TAKE_PAIR, ACTIONS.SWEEP])
+  const decreaseParams = encodeAbiParameters(
+    [{ type: "uint256" }, { type: "uint256" }, { type: "uint128" }, { type: "uint128" }, { type: "bytes" }],
+    [tokenId, liquidity, amount0Min, amount1Min, "0x"]
+  )
+  const takeParams = encodeAbiParameters(
+    [{ type: "address" }, { type: "address" }, { type: "address" }],
+    [ETH_ADDRESS, ZEUS_TOKEN_ADDRESS as `0x${string}`, recipient]
+  )
+  const sweepParams = encodeAbiParameters(
+    [{ type: "address" }, { type: "address" }],
+    [ETH_ADDRESS, MSG_SENDER]
+  )
+  return encodeAbiParameters(
+    [{ type: "bytes" }, { type: "bytes[]" }],
+    [actions, [decreaseParams, takeParams, sweepParams]]
+  )
+}
+
 /** INCREASE_LIQUIDITY + SETTLE_PAIR + SWEEP */
 function encodeIncreaseLiquidityUnlockData(
   tokenId: bigint, liquidity: bigint, amount0Max: bigint, amount1Max: bigint
@@ -177,6 +200,13 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
 
   // Add liquidity form state
   const [showAddLiquidity, setShowAddLiquidity] = useState(false)
+
+  // Withdraw partial form state
+  const [showWithdraw, setShowWithdraw] = useState(false)
+  const [withdrawPct, setWithdrawPct] = useState(25)
+
+  const { writeContract: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawing } = useWriteContract()
+  const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({ hash: withdrawTxHash })
   const [addEthAmount, setAddEthAmount] = useState("")
   const [addZeusAmount, setAddZeusAmount] = useState("")
 
@@ -246,6 +276,17 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
       onSuccess?.()
     }
   }, [isAddMoreSuccess])
+
+  useEffect(() => {
+    if (isWithdrawSuccess) {
+      toast.success("Withdrawal successful!")
+      setShowWithdraw(false)
+      setWithdrawPct(25)
+      fetch("/api/positions/invalidate", { method: "POST" }).catch(() => {})
+      queryClient.invalidateQueries({ queryKey: ["all-positions"] })
+      onSuccess?.()
+    }
+  }, [isWithdrawSuccess])
 
   const handleClose = () => {
     if (!address) return
@@ -320,7 +361,24 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
     })
   }
 
-  const isBusy = isClosing || isCloseConfirming || isCollecting || isCollectConfirming
+  const handleWithdraw = () => {
+    if (!address || position.liquidity === 0n) return
+    const slippage = 0.99
+    const withdrawLiquidity = (position.liquidity * BigInt(withdrawPct)) / 100n
+    const amount0Min = BigInt(Math.floor(Number(position.amount0) * (withdrawPct / 100) * slippage))
+    const amount1Min = BigInt(Math.floor(Number(position.amount1) * (withdrawPct / 100) * slippage))
+    const unlockData = encodeDecreaseLiquidityUnlockData(position.tokenId, withdrawLiquidity, amount0Min, amount1Min, address)
+    writeWithdraw({
+      address: UNISWAP_V4_POSITION_MANAGER as `0x${string}`,
+      abi: PM_ABI,
+      functionName: "modifyLiquidities",
+      args: [unlockData, deadline()],
+    }, {
+      onError: (e) => toast.error(`Withdraw failed: ${e.message.slice(0, 80)}`),
+    })
+  }
+
+  const isBusy = isClosing || isCloseConfirming || isCollecting || isCollectConfirming || isWithdrawing || isWithdrawConfirming
   const isAddBusy = isApproving || isApproveConfirming || isAddingMore || isAddMoreConfirming
 
   const ethAmount   = Number(position.amount0) / 1e18
@@ -349,6 +407,13 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
   const isAddFormValid = (needsEth ? addEthNum > 0 && addEthNum <= ethBalanceNum : true) &&
     (needsZeus ? addZeusNum > 0 && addZeusNum <= zeusBalanceNum : true) &&
     (needsEth ? addEthNum > 0 : true) || (needsZeus ? addZeusNum > 0 : true)
+
+  // Withdraw preview derived values
+  const withdrawEth      = (Number(position.amount0) / 1e18) * (withdrawPct / 100)
+  const withdrawZeus     = (Number(position.amount1) / 10 ** ZEUS_DECIMALS) * (withdrawPct / 100)
+  const withdrawEthUsd   = withdrawEth * ethPriceUsd
+  const withdrawZeusUsd  = withdrawZeus * zeusPriceUsd
+  const withdrawTotalUsd = withdrawEthUsd + withdrawZeusUsd
 
   return (
     <div style={{
@@ -445,9 +510,9 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
 
       {/* Action buttons */}
       {position.status !== "closed" && (
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <button
-            onClick={() => setShowAddLiquidity(!showAddLiquidity)}
+            onClick={() => { setShowAddLiquidity(!showAddLiquidity); setShowWithdraw(false) }}
             disabled={isBusy}
             style={{
               flex: 1, padding: "0.65rem", borderRadius: "0.75rem", cursor: isBusy ? "not-allowed" : "pointer",
@@ -458,6 +523,19 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
             }}
           >
             {showAddLiquidity ? "Cancel" : "Add More Liquidity"}
+          </button>
+          <button
+            onClick={() => { setShowWithdraw(!showWithdraw); setShowAddLiquidity(false) }}
+            disabled={isBusy}
+            style={{
+              flex: 1, padding: "0.65rem", borderRadius: "0.75rem", cursor: isBusy ? "not-allowed" : "pointer",
+              background: showWithdraw ? "rgba(240,230,78,0.15)" : "rgba(240,230,78,0.06)",
+              border: `1px solid ${showWithdraw ? "rgba(240,230,78,0.5)" : "rgba(240,230,78,0.2)"}`,
+              color: "var(--highlight)", fontSize: "0.875rem", fontWeight: 700, letterSpacing: "0.04em",
+              opacity: isBusy ? 0.5 : 1, transition: "all 0.15s",
+            }}
+          >
+            {showWithdraw ? "Cancel" : "Withdraw Partial"}
           </button>
           <button
             onClick={handleClose}
@@ -606,6 +684,55 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
               Tx: {addMoreTxHash.slice(0, 10)}...
             </a>
           )}
+        </div>
+      )}
+
+      {/* Withdraw Partial inline form */}
+      {showWithdraw && position.status !== "closed" && (
+        <div style={{ background: "rgba(240,230,78,0.04)", border: "1px solid rgba(240,230,78,0.15)", borderRadius: "1rem", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* Percentage picker */}
+          <div>
+            <label style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: "0.5rem" }}>
+              Withdraw Amount
+            </label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              {[25, 50, 75, 100].map(pct => (
+                <button key={pct} onClick={() => setWithdrawPct(pct)} style={{
+                  flex: 1, padding: "0.5rem",
+                  background: withdrawPct === pct ? "rgba(240,230,78,0.2)" : "rgba(255,255,255,0.05)",
+                  border: `1px solid ${withdrawPct === pct ? "rgba(240,230,78,0.5)" : "rgba(255,255,255,0.1)"}`,
+                  borderRadius: "0.5rem", color: withdrawPct === pct ? "var(--highlight)" : "var(--text-muted)",
+                  fontWeight: 700, fontSize: "0.82rem", cursor: "pointer",
+                }}>
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "0.75rem", padding: "0.875rem" }}>
+            <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.5rem" }}>You will receive</p>
+            <p style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", color: "#fff", marginBottom: "0.35rem" }}>{fmtUsd(withdrawTotalUsd)}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+              {needsEth && withdrawEth > 0 && (
+                <span style={{ fontSize: "0.75rem", color: "#a8c8ff" }}>
+                  {withdrawEth.toFixed(6)} ETH <span style={{ color: "var(--text-muted)" }}>({fmtUsd(withdrawEthUsd)})</span>
+                </span>
+              )}
+              {needsZeus && withdrawZeus > 0 && (
+                <span style={{ fontSize: "0.75rem", color: "var(--highlight)" }}>
+                  {fmtZeus(withdrawZeus)} ZEUS <span style={{ color: "var(--text-muted)" }}>({fmtUsd(withdrawZeusUsd)})</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button onClick={handleWithdraw} disabled={isBusy || position.liquidity === 0n} className="btn-zeus"
+            style={{ width: "100%", padding: "0.75rem", fontSize: "0.875rem", fontWeight: 700 }}>
+            {isWithdrawing || isWithdrawConfirming ? "Withdrawing..." : `Withdraw ${withdrawPct}%`}
+          </button>
         </div>
       )}
 

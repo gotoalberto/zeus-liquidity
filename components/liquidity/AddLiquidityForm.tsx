@@ -37,6 +37,14 @@ import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 import { mcapToTick } from "@/lib/uniswap/mcap"
 import { toast } from "sonner"
 
+function fmtZeus(value: number): string {
+  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`
+  return value.toFixed(4)
+}
+
 // Uniswap V4 PositionManager — modifyLiquidities is the correct entry point
 const POSITION_MANAGER_ABI = [
   {
@@ -423,7 +431,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
                 </button>
               </div>
               {ethAmountNum > 0 && ethPriceUsd && (
-                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>≈ ${(ethAmountNum * ethPriceUsd).toFixed(2)}</p>
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{ethAmountNum.toFixed(6)} ETH (≈ ${(ethAmountNum * ethPriceUsd).toFixed(2)})</p>
               )}
               {hasInsufficientEth && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ETH balance</p>}
             </div>
@@ -434,7 +442,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ZEUS Amount</label>
                 <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-                  Balance: {zeusBalanceNum.toFixed(4)} ZEUS
+                  Balance: {fmtZeus(zeusBalanceNum)} ZEUS
                 </span>
               </div>
               <div style={{ position: "relative" }}>
@@ -456,7 +464,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
                 </button>
               </div>
               {zeusAmountNum > 0 && priceData && (
-                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>≈ ${(zeusAmountNum * priceData.priceUsd).toFixed(2)}</p>
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{fmtZeus(zeusAmountNum)} ZEUS (≈ ${(zeusAmountNum * priceData.priceUsd).toFixed(2)})</p>
               )}
               {hasInsufficientZeus && <p style={{ fontSize: "0.72rem", color: "#f87171" }}>Insufficient ZEUS balance</p>}
             </div>
