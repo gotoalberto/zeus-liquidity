@@ -10,7 +10,7 @@
  *   - getSlot0(PoolId) → (sqrtPriceX96, tick, protocolFee, lpFee)
  */
 
-import { encodeAbiParameters, keccak256 } from "viem"
+import { encodeAbiParameters, keccak256, isAddress } from "viem"
 import { getLogs, ethCall, alchemyBatchRpcCall } from "@/lib/services/alchemy"
 import {
   UNISWAP_V4_POSITION_MANAGER,
@@ -329,4 +329,26 @@ export async function buildPosition(
     maxPriceEth,
     uncollectedFeesUsd,
   }
+}
+
+const BIGINT_FIELDS = [
+  "tokenId", "liquidity", "amount0", "amount1",
+  "tokensOwed0", "tokensOwed1",
+  "feeGrowthInside0LastX128", "feeGrowthInside1LastX128",
+] as const
+
+export function serializePosition(p: Position): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...p }
+  for (const field of BIGINT_FIELDS) {
+    result[field] = (p[field] as bigint).toString()
+  }
+  return result
+}
+
+export function deserializePosition(raw: Record<string, unknown>): Position {
+  const result = { ...raw } as Record<string, unknown>
+  for (const field of BIGINT_FIELDS) {
+    result[field] = BigInt(raw[field] as string)
+  }
+  return result as unknown as Position
 }

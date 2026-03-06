@@ -255,7 +255,26 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
   }, [isCloseSuccess])
 
   useEffect(() => {
-    if (isCollectSuccess) { toast.success("Fees collected!"); onSuccess?.() }
+    if (isCollectSuccess) {
+      toast.success("Fees collected!")
+      onSuccess?.()
+      fetch("/api/fees/collect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          tokenId: position.tokenId.toString(),
+          amount0Eth: Number(position.tokensOwed0) / 1e18,
+          amount1Zeus: Number(position.tokensOwed1) / 1e9,
+          ethPriceUsd,
+          zeusPriceUsd,
+          totalUsd:
+            (Number(position.tokensOwed0) / 1e18) * ethPriceUsd +
+            (Number(position.tokensOwed1) / 1e9) * zeusPriceUsd,
+          txHash: collectTxHash,
+        }),
+      }).catch(() => {})
+    }
   }, [isCollectSuccess])
 
   useEffect(() => {

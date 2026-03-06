@@ -20,7 +20,7 @@ export function getDb(): Pool {
 }
 
 /**
- * Ensure the zeus_apr_cache table exists
+ * Ensure all required tables exist
  */
 export async function ensureSchema(): Promise<void> {
   const db = getDb()
@@ -36,6 +36,30 @@ export async function ensureSchema(): Promise<void> {
   await db.query(`
     CREATE TABLE IF NOT EXISTS zeus_positions_cache (
       id SERIAL PRIMARY KEY,
+      positions JSONB NOT NULL,
+      computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS zeus_fee_collections (
+      id SERIAL PRIMARY KEY,
+      address TEXT NOT NULL,
+      token_id TEXT NOT NULL,
+      amount0_eth NUMERIC NOT NULL,
+      amount1_zeus NUMERIC NOT NULL,
+      eth_price_usd NUMERIC NOT NULL,
+      zeus_price_usd NUMERIC NOT NULL,
+      total_usd NUMERIC NOT NULL,
+      tx_hash TEXT,
+      collected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `)
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_fee_collections_address ON zeus_fee_collections(address)
+  `)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS zeus_user_positions_cache (
+      address TEXT PRIMARY KEY,
       positions JSONB NOT NULL,
       computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
