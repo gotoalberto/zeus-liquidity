@@ -7,6 +7,7 @@ interface LeaderboardEntry {
   rank: number
   address: string
   uncollectedFeesUsd: number
+  totalValueUsd: number
   positionCount: number
 }
 
@@ -141,10 +142,20 @@ export function FeeLeaderboard() {
                       </div>
                     </div>
 
-                    {/* Total USD */}
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    {/* Position Value */}
+                    <div style={{ textAlign: "right", flexShrink: 0, minWidth: 90 }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: "1rem", color: "#4394f4" }}>
+                        {fmtUsd(entry.totalValueUsd ?? 0)}
+                      </div>
+                      <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "0.1rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                        TVL
+                      </div>
+                    </div>
+
+                    {/* Fees Earned */}
+                    <div style={{ textAlign: "right", flexShrink: 0, minWidth: 90 }}>
                       <div style={{
-                        fontFamily: "var(--font-display)", fontSize: "1.1rem",
+                        fontFamily: "var(--font-display)", fontSize: "1rem",
                         color: rankStyle ? rankStyle.color : "#4ade80",
                       }}>
                         {fmtUsd(entry.uncollectedFeesUsd)}

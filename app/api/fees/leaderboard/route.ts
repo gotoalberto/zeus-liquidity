@@ -240,28 +240,66 @@ async function buildLeaderboard() {
     growthByRange.set(key, { g0: BigInt("0x" + h.slice(0, 64)), g1: BigInt("0x" + h.slice(64, 128)) })
   })
 
-  // ── Step 4: compute pending fees per active position ─────────────────────────
+  // ── Step 4: compute pending fees + position value per active position ──────────
   const Q128 = 2n ** 128n
+  const Q96  = 2n ** 96n
 
-  // pendingByToken: tokenId → pendingFeesUsd right now
-  const pendingByToken = new Map<string, { owner: string; pendingUsd: number }>()
+  function tickToSqrt(tick: number): bigint {
+    return BigInt(Math.floor(Math.sqrt(1.0001 ** tick) * Number(Q96)))
+  }
+
+  function getAmounts(sqrtPrice: bigint, tickLower: number, tickUpper: number, liquidity: bigint) {
+    const sqrtLower = tickToSqrt(tickLower)
+    const sqrtUpper = tickToSqrt(tickUpper)
+    if (sqrtPrice <= sqrtLower) {
+      return {
+        amount0: (liquidity * Q96 * (sqrtUpper - sqrtLower)) / (sqrtUpper * sqrtLower),
+        amount1: 0n,
+      }
+    } else if (sqrtPrice < sqrtUpper) {
+      return {
+        amount0: (liquidity * Q96 * (sqrtUpper - sqrtPrice)) / (sqrtUpper * sqrtPrice),
+        amount1: (liquidity * (sqrtPrice - sqrtLower)) / Q96,
+      }
+    } else {
+      return { amount0: 0n, amount1: (liquidity * (sqrtUpper - sqrtLower)) / Q96 }
+    }
+  }
+
+  const sqrtPriceCurrent = tickToSqrt(currentTick)
+
+  // pendingByToken: tokenId → { owner, pendingUsd, valueUsd }
+  const pendingByToken = new Map<string, { owner: string; pendingUsd: number; valueUsd: number }>()
 
   activePositions.forEach(({ idx, tickLower, tickUpper, liquidity }, j) => {
     const owner  = flat[idx].owner
     const tokenId = flat[idx].tokenId.toString()
     const posHex = posInfoResults[j] as string | null
-    if (!posHex || posHex === "0x") return
+
+    // Position value (principal)
+    const { amount0, amount1 } = getAmounts(sqrtPriceCurrent, tickLower, tickUpper, liquidity)
+    const valueUsd =
+      (Number(amount0) / 1e18) * ethPriceUsd +
+      (Number(amount1) / 10 ** ZEUS_DECIMALS) * priceData.priceUsd
+
+    if (!posHex || posHex === "0x") {
+      pendingByToken.set(tokenId, { owner, pendingUsd: 0, valueUsd })
+      return
+    }
     const ph = posHex.slice(2)
     const fg0Last = BigInt("0x" + ph.slice(64, 128))
     const fg1Last = BigInt("0x" + ph.slice(128, 192))
     const growth  = growthByRange.get(`${tickLower}:${tickUpper}`)
-    if (!growth) return
+    if (!growth) {
+      pendingByToken.set(tokenId, { owner, pendingUsd: 0, valueUsd })
+      return
+    }
     const delta0 = (growth.g0 - fg0Last + Q128 * Q128) % (Q128 * Q128)
     const delta1 = (growth.g1 - fg1Last + Q128 * Q128) % (Q128 * Q128)
     const pendingUsd =
       (Number((delta0 * liquidity) / Q128) / 1e18) * ethPriceUsd +
       (Number((delta1 * liquidity) / Q128) / 10 ** ZEUS_DECIMALS) * priceData.priceUsd
-    pendingByToken.set(tokenId, { owner, pendingUsd })
+    pendingByToken.set(tokenId, { owner, pendingUsd, valueUsd })
   })
 
   // ── Step 5: load previous snapshots, detect collected fees, update DB ─────────
@@ -391,27 +429,31 @@ async function buildLeaderboard() {
     }
   }
 
-  // Sum pending fees from active positions (newSnapshots only covers currently active tokens)
+  // Sum pending fees + position value from active positions
   const ownerPending = new Map<string, number>()
-  for (const snap of newSnapshots) {
-    ownerPending.set(snap.owner, (ownerPending.get(snap.owner) ?? 0) + snap.pendingUsd)
+  const ownerValue   = new Map<string, number>()
+  for (const [, { owner, pendingUsd, valueUsd }] of pendingByToken) {
+    ownerPending.set(owner, (ownerPending.get(owner) ?? 0) + pendingUsd)
+    ownerValue.set(owner, (ownerValue.get(owner) ?? 0) + valueUsd)
   }
 
   // Final aggregation: only owners with active positions appear in leaderboard
-  const ownerFees = new Map<string, { totalFeesUsd: number; positions: number }>()
+  const ownerFees = new Map<string, { totalFeesUsd: number; totalValueUsd: number; positions: number }>()
   for (const [owner, positions] of activeOwnerPositions) {
     const accumulated = ownerHistorical.get(owner) ?? 0
     const pending     = ownerPending.get(owner) ?? 0
-    ownerFees.set(owner, { totalFeesUsd: accumulated + pending, positions })
+    const value       = ownerValue.get(owner) ?? 0
+    ownerFees.set(owner, { totalFeesUsd: accumulated + pending, totalValueUsd: value, positions })
   }
 
   return [...ownerFees.entries()]
     .sort((a, b) => b[1].totalFeesUsd - a[1].totalFeesUsd)
     .slice(0, 10)
-    .map(([address, { totalFeesUsd, positions }], i) => ({
+    .map(([address, { totalFeesUsd, totalValueUsd, positions }], i) => ({
       rank: i + 1,
       address,
       uncollectedFeesUsd: totalFeesUsd,
+      totalValueUsd,
       positionCount: positions,
     }))
 }
