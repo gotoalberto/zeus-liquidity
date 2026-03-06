@@ -56,8 +56,8 @@ const [minFocused, setMinFocused] = useState(false)
         maxTick,
         minPriceEth,
         maxPriceEth,
-        minPriceUsd: minMcapNum / (priceData.circulatingSupply || 1),
-        maxPriceUsd: maxMcapNum / (priceData.circulatingSupply || 1),
+        minPriceUsd: minMcapNum / (Number(priceData.totalSupply) / 1e9 || 1),
+        maxPriceUsd: maxMcapNum / (Number(priceData.totalSupply) / 1e9 || 1),
       }
 
       onRangeChange(range)
