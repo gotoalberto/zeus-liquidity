@@ -79,10 +79,7 @@ export async function getUserPositionTokenIds(
   userAddress: string
 ): Promise<{ tokenId: bigint; mintBlock: string }[]> {
   try {
-    const currentBlockResp = await alchemyBatchRpcCall([{ method: "eth_blockNumber", params: [] }])
-    const currentBlock = parseInt(currentBlockResp[0], 16)
-    const fromBlock = Math.max(21355000, currentBlock - 500000)
-    const fromBlockHex = `0x${fromBlock.toString(16)}`
+    const fromBlockHex = `0x${(21355000).toString(16)}`
     const addr = userAddress.slice(2).toLowerCase()
 
     // Fetch transfers IN (to=user) and OUT (from=user) in parallel

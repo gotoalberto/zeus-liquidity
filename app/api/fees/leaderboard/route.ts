@@ -242,7 +242,13 @@ async function buildLeaderboard() {
 
   // Aggregate fees per owner
   const Q128 = 2n ** 128n
+
+  // Pre-seed all NFT holders with 0 fees so holders with 0 liquidity still appear
   const ownerFees = new Map<string, { feesUsd: number; positions: number }>()
+  for (const { owner } of flat) {
+    const cur = ownerFees.get(owner) ?? { feesUsd: 0, positions: 0 }
+    ownerFees.set(owner, { feesUsd: cur.feesUsd, positions: cur.positions + 1 })
+  }
 
   activePositions.forEach(({ idx, tickLower, tickUpper, liquidity }, j) => {
     const owner  = flat[idx].owner
@@ -258,8 +264,8 @@ async function buildLeaderboard() {
     const feesUsd =
       (Number((delta0 * liquidity) / Q128) / 1e18) * ethPriceUsd +
       (Number((delta1 * liquidity) / Q128) / 10 ** ZEUS_DECIMALS) * priceData.priceUsd
-    const cur = ownerFees.get(owner) ?? { feesUsd: 0, positions: 0 }
-    ownerFees.set(owner, { feesUsd: cur.feesUsd + feesUsd, positions: cur.positions + 1 })
+    const cur = ownerFees.get(owner)!
+    ownerFees.set(owner, { feesUsd: cur.feesUsd + feesUsd, positions: cur.positions })
   })
 
   return [...ownerFees.entries()]
