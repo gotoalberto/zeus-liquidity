@@ -441,7 +441,7 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
                 color: tooltip.band.inRange ? "rgba(240,230,78,0.45)" : "rgba(67,148,244,0.45)",
                 textAlign: "center",
               }}>
-                Haz click para unirte al rango
+                Click to join this range
               </div>
             )}
           </div>
