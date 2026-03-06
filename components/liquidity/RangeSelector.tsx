@@ -186,12 +186,6 @@ const [minFocused, setMinFocused] = useState(false)
         </div>
       )}
 
-      {/* Out of Range Warning */}
-      {isOutOfRange && (
-        <div style={{ borderRadius: "0.75rem", padding: "0.75rem 1rem", fontSize: "0.85rem", fontWeight: 700, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)", color: "#fb923c" }}>
-          Current price is outside your selected range. Price must move into range to earn fees.
-        </div>
-      )}
 
     </div>
   )
