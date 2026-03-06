@@ -21,7 +21,6 @@ interface DrawnBand {
   mcapHigh: number
   totalLiquidity: bigint
   tvlUsd: number
-  count: number
   inRange: boolean
 }
 
@@ -196,124 +195,60 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
     const series = candlestickSeriesRef.current
     if (!series) return
 
-    // Collect valid rects for all positions
     const currentMcap = priceData?.marketCapUsd ?? 0
     const zeusPriceUsd = priceData ? priceData.marketCapUsd / (Number(totalSupplyRaw) / 10 ** ZEUS_DECIMALS) : 0
     const currentTick = currentMcap > 0 ? mcapToTick(currentMcap, ethPriceUsd, totalSupplyRaw) : 0
-    type RawBand = { top: number; bottom: number; mcapLow: number; mcapHigh: number; liq: bigint; tvlUsd: number; inRange: boolean }
-    const rawBands: RawBand[] = []
 
-    for (const pos of positionsData.positions) {
-      if (pos.tickLower >= pos.tickUpper) continue
-      try {
-        // tickLower (numerically smaller) → higher mcap; tickUpper (numerically larger) → lower mcap
-        const mcapFromTickLower = tickToMcap(pos.tickLower, ethPriceUsd, totalSupplyRaw)
-        const mcapFromTickUpper = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
-        const mcapLow = Math.min(mcapFromTickLower, mcapFromTickUpper)
-        const mcapHigh = Math.max(mcapFromTickLower, mcapFromTickUpper)
+    // Build one DrawnBand per position (no merging)
+    const bands: DrawnBand[] = []
 
-        // Skip positions with absurd mcap values (bad ticks)
-        if (!isFinite(mcapLow) || !isFinite(mcapHigh) || mcapHigh > 1e13) continue
-
-        const yHigh = series.priceToCoordinate(mcapHigh)
-        const yLow = series.priceToCoordinate(mcapLow)
-
-        if (yHigh === null || yLow === null) continue
-
-        const top = Math.min(yHigh, yLow)
-        const bottom = Math.max(yHigh, yLow)
-        const height = bottom - top
-
-        if (height < 2) continue
-
-        const inRange = currentMcap >= mcapLow && currentMcap <= mcapHigh
-        const liq = BigInt(pos.liquidity)
-        const tvlUsd = calcTvlUsd(liq, pos.tickLower, pos.tickUpper, currentTick, ethPriceUsd, zeusPriceUsd)
-
-        rawBands.push({ top, bottom, mcapLow, mcapHigh, liq, tvlUsd, inRange })
-      } catch {
-        // ignore positions with invalid ticks
-      }
-    }
-
-    // Sort by top ascending, then merge overlapping bands
-    rawBands.sort((a, b) => a.top - b.top)
-
-    const merged: DrawnBand[] = []
-    for (const rb of rawBands) {
-      if (merged.length > 0) {
-        const last = merged[merged.length - 1]
-        if (rb.top <= last.bottom) {
-          // overlaps — merge
-          last.bottom = Math.max(last.bottom, rb.bottom)
-          last.mcapLow = Math.min(last.mcapLow, rb.mcapLow)
-          last.mcapHigh = Math.max(last.mcapHigh, rb.mcapHigh)
-          last.totalLiquidity += rb.liq
-          last.tvlUsd += rb.tvlUsd
-          last.count += 1
-          last.inRange = last.inRange || rb.inRange
-          continue
-        }
-      }
-      merged.push({
-        top: rb.top,
-        bottom: rb.bottom,
-        mcapLow: rb.mcapLow,
-        mcapHigh: rb.mcapHigh,
-        totalLiquidity: rb.liq,
-        tvlUsd: rb.tvlUsd,
-        count: 1,
-        inRange: rb.inRange,
-      })
-    }
-
-    drawnBandsRef.current = merged
-
-    // Draw each original position band (not the merged ones — keep individual visuals)
     for (const pos of positionsData.positions) {
       if (pos.tickLower >= pos.tickUpper) continue
       try {
         const mcapA = tickToMcap(pos.tickLower, ethPriceUsd, totalSupplyRaw)
         const mcapB = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
-        const mcapBandLow = Math.min(mcapA, mcapB)
-        const mcapBandHigh = Math.max(mcapA, mcapB)
+        const mcapLow  = Math.min(mcapA, mcapB)
+        const mcapHigh = Math.max(mcapA, mcapB)
 
-        const yHigh = series.priceToCoordinate(mcapBandHigh)
-        const yLow = series.priceToCoordinate(mcapBandLow)
+        if (!isFinite(mcapLow) || !isFinite(mcapHigh) || mcapHigh > 1e13) continue
 
+        const yHigh = series.priceToCoordinate(mcapHigh)
+        const yLow  = series.priceToCoordinate(mcapLow)
         if (yHigh === null || yLow === null) continue
 
-        const top = Math.min(yHigh, yLow)
+        const top    = Math.min(yHigh, yLow)
         const bottom = Math.max(yHigh, yLow)
-        const height = bottom - top
+        if (bottom - top < 2) continue
 
-        if (height < 2) continue
+        const liq    = BigInt(pos.liquidity)
+        const tvlUsd = calcTvlUsd(liq, pos.tickLower, pos.tickUpper, currentTick, ethPriceUsd, zeusPriceUsd)
+        const inRange = currentMcap >= mcapLow && currentMcap <= mcapHigh
 
-        const currentMcap = priceData?.marketCapUsd ?? 0
-        const inRange = currentMcap >= mcapBandLow && currentMcap <= mcapBandHigh
-        const alpha = 0.18
-        const color = inRange ? `rgba(240,230,78,${alpha})` : `rgba(67,148,244,${alpha})`
-        const border = inRange ? `rgba(240,230,78,0.45)` : `rgba(67,148,244,0.35)`
-
-        ctx.fillStyle = color
-        ctx.fillRect(0, top, canvas.width - 90, height)
-
-        ctx.strokeStyle = border
-        ctx.lineWidth = 1
-        ctx.setLineDash([4, 3])
-        ctx.beginPath()
-        ctx.moveTo(0, top)
-        ctx.lineTo(canvas.width - 90, top)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(0, bottom)
-        ctx.lineTo(canvas.width - 90, bottom)
-        ctx.stroke()
-        ctx.setLineDash([])
-      } catch {
-        // ignore positions with invalid ticks
-      }
+        bands.push({ top, bottom, mcapLow, mcapHigh, totalLiquidity: liq, tvlUsd, inRange })
+      } catch { /* ignore bad ticks */ }
     }
+
+    // Paint largest bands first (bottom z-layer) so smaller ones appear on top
+    const paintOrder = [...bands].sort((a, b) => (b.bottom - b.top) - (a.bottom - a.top))
+    for (const band of paintOrder) {
+      const height = band.bottom - band.top
+      const alpha  = 0.18
+      const color  = band.inRange ? `rgba(240,230,78,${alpha})` : `rgba(67,148,244,${alpha})`
+      const border = band.inRange ? "rgba(240,230,78,0.45)"      : "rgba(67,148,244,0.35)"
+
+      ctx.fillStyle = color
+      ctx.fillRect(0, band.top, canvas.width - 90, height)
+
+      ctx.strokeStyle = border
+      ctx.lineWidth = 1
+      ctx.setLineDash([4, 3])
+      ctx.beginPath(); ctx.moveTo(0, band.top);    ctx.lineTo(canvas.width - 90, band.top);    ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(0, band.bottom); ctx.lineTo(canvas.width - 90, band.bottom); ctx.stroke()
+      ctx.setLineDash([])
+    }
+
+    // Hit-test order: smallest bands first so they are selectable when nested inside larger ones
+    drawnBandsRef.current = [...bands].sort((a, b) => (a.bottom - a.top) - (b.bottom - b.top))
   }
 
   // Redraw overlay when positions or price data changes
@@ -456,7 +391,7 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
             }}
           >
             <div style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: "0.4rem" }}>
-              {tooltip.band.count} {tooltip.band.count === 1 ? "position" : "positions"}
+              1 position
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.3rem" }}>
               <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>TVL</span>
