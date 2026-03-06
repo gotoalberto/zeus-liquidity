@@ -31,7 +31,7 @@ const RANK_STYLES: Record<number, { color: string; bg: string; border: string }>
 export function FeeLeaderboard() {
   const { address } = useAccount()
 
-  const { data, isLoading } = useQuery<{ leaderboard: LeaderboardEntry[] }>({
+  const { data, isLoading } = useQuery<{ leaderboard: LeaderboardEntry[]; stale?: boolean }>({
     queryKey: ["fee-leaderboard"],
     queryFn: async () => {
       const res = await fetch("/api/fees/leaderboard")
@@ -39,10 +39,14 @@ export function FeeLeaderboard() {
       return res.json()
     },
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    // Poll every 8s while the server is still computing (stale=true, empty list)
+    refetchInterval: (query) =>
+      query.state.data?.stale && query.state.data.leaderboard.length === 0 ? 8_000 : 60_000,
   })
 
   const leaderboard = data?.leaderboard ?? []
+  // Show skeleton while loading OR while server is still computing (stale + empty)
+  const computing = isLoading || (data?.stale && leaderboard.length === 0)
 
   return (
     <section id="leaderboard" style={{ padding: "5rem 1.5rem" }}>
@@ -55,7 +59,7 @@ export function FeeLeaderboard() {
           <h2 className="section-title">Top Defenders</h2>
         </div>
 
-        {isLoading ? (
+        {computing ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
             {[...Array(5)].map((_, i) => (
               <div key={i} className="skeleton" style={{ height: 56, borderRadius: "0.875rem" }} />

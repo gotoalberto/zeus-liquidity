@@ -319,20 +319,9 @@ export async function GET() {
     return NextResponse.json({ leaderboard: cachedData, cached: true })
   }
 
-  // Cache exists but stale — return stale data immediately, refresh in background
-  if (cachedData && cacheAge >= CACHE_TTL_MS) {
-    waitUntil(buildLeaderboard().then(saveCache).catch(console.error))
-    return NextResponse.json({ leaderboard: cachedData, cached: true, stale: true })
-  }
-
-  // No cache at all — compute synchronously (first ever request)
-  try {
-    const leaderboard = await buildLeaderboard()
-    await saveCache(leaderboard)
-    return NextResponse.json({ leaderboard, cached: false })
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    console.error("Leaderboard error:", msg)
-    return NextResponse.json({ error: "Failed to build leaderboard", detail: msg }, { status: 500 })
-  }
+  // Cache stale or missing — return what we have immediately (empty array if nothing),
+  // recompute in background via waitUntil so Vercel keeps the function alive even if
+  // the visitor closes the page before the response is sent.
+  waitUntil(buildLeaderboard().then(saveCache).catch(console.error))
+  return NextResponse.json({ leaderboard: cachedData ?? [], cached: !!cachedData, stale: true })
 }
