@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { PriceRange } from "@/types"
-import { mcapToTick, tickToMcap, tickToZeusEthPrice, getPresetRange } from "@/lib/uniswap/mcap"
+import { mcapToTick, getPresetRange } from "@/lib/uniswap/mcap"
 import { MCAP_RANGE_PRESETS } from "@/lib/constants"
 import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 
@@ -25,8 +25,7 @@ export function RangeSelector({ onRangeChange, initialMinMcap, initialMaxMcap }:
 
   const [minMcap, setMinMcap] = useState<string>(initialMinMcap ? initialMinMcap.toFixed(0) : "")
   const [maxMcap, setMaxMcap] = useState<string>(initialMaxMcap ? initialMaxMcap.toFixed(0) : "")
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [minFocused, setMinFocused] = useState(false)
+const [minFocused, setMinFocused] = useState(false)
   const [maxFocused, setMaxFocused] = useState(false)
 
   // Apply externally injected initial values when they change
@@ -194,34 +193,6 @@ export function RangeSelector({ onRangeChange, initialMinMcap, initialMaxMcap }:
         </div>
       )}
 
-      {/* Advanced Details */}
-      {minMcapNum > 0 && maxMcapNum > 0 && minMcapNum < maxMcapNum && (
-        <details open={showAdvanced}>
-          <summary
-            style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)", listStyle: "none", display: "flex", alignItems: "center", gap: "0.4rem", userSelect: "none" }}
-            onClick={(e) => { e.preventDefault(); setShowAdvanced(!showAdvanced) }}
-          >
-            <span style={{ fontSize: "0.55rem", transition: "transform 0.2s", transform: showAdvanced ? "rotate(90deg)" : "none", display: "inline-block" }}>▶</span>
-            Advanced Details
-          </summary>
-          <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.8rem", background: "rgba(255,255,255,0.03)", borderRadius: "0.75rem", padding: "0.875rem 1rem", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Tick Range:</span>
-              <span style={{ fontFamily: "monospace", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
-                {mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)} –{" "}
-                {mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)}
-              </span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>Price Range (ETH):</span>
-              <span style={{ fontFamily: "monospace", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
-                {tickToZeusEthPrice(mcapToTick(minMcapNum, ethPriceUsd, priceData.totalSupply)).toFixed(8)}{" "}–{" "}
-                {tickToZeusEthPrice(mcapToTick(maxMcapNum, ethPriceUsd, priceData.totalSupply)).toFixed(8)}
-              </span>
-            </div>
-          </div>
-        </details>
-      )}
     </div>
   )
 }
