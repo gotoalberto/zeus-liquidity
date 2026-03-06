@@ -5,7 +5,8 @@ import { useQuery } from "@tanstack/react-query"
 import { createChart, ColorType, CandlestickSeries, type IChartApi, type ISeriesApi } from "lightweight-charts"
 import { useZeusOHLC, useZeusPrice } from "@/hooks/useZeusPrice"
 import { useEthPrice } from "@/hooks/useZeusPrice"
-import { tickToMcap } from "@/lib/uniswap/mcap"
+import { tickToMcap, tickToZeusEthPrice } from "@/lib/uniswap/mcap"
+import { ZEUS_DECIMALS, ETH_DECIMALS } from "@/lib/constants"
 
 interface V4Position {
   tickLower: number
@@ -19,6 +20,7 @@ interface DrawnBand {
   mcapLow: number
   mcapHigh: number
   totalLiquidity: bigint
+  tvlUsd: number
   count: number
   inRange: boolean
 }
@@ -31,21 +33,38 @@ interface TooltipInfo {
 
 function formatMcap(value: number): string {
   if (!isFinite(value) || value <= 0) return "—"
-  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(1)}T`
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`
+  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`
+  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`
   return `$${value.toFixed(0)}`
 }
 
-function fmtLiquidity(liq: bigint): string {
-  const n = Number(liq)
-  if (n >= 1e18) return `${(n / 1e18).toFixed(2)}E`
-  if (n >= 1e15) return `${(n / 1e15).toFixed(2)}P`
-  if (n >= 1e12) return `${(n / 1e12).toFixed(2)}T`
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`
-  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`
-  return n.toLocaleString()
+function fmtTvl(usd: number): string {
+  if (!isFinite(usd) || usd <= 0) return "—"
+  if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(2)}B`
+  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(2)}M`
+  if (usd >= 1_000) return `$${(usd / 1_000).toFixed(2)}K`
+  return `$${usd.toFixed(0)}`
+}
+
+function calcTvlUsd(liquidity: bigint, tickLower: number, tickUpper: number, currentTick: number, ethPriceUsd: number, zeusPriceUsd: number): number {
+  try {
+    const DECIMAL_ADJ = 10 ** (ZEUS_DECIMALS - ETH_DECIMALS) // 1e-9
+    const sqrtPriceLow = Math.sqrt(tickToZeusEthPrice(tickLower) * DECIMAL_ADJ)
+    const sqrtPriceHigh = Math.sqrt(tickToZeusEthPrice(tickUpper) * DECIMAL_ADJ)
+    const sqrtPriceCur = Math.sqrt(tickToZeusEthPrice(currentTick) * DECIMAL_ADJ)
+    const sqrtP = Math.max(sqrtPriceLow, Math.min(sqrtPriceCur, sqrtPriceHigh))
+    const L = Number(liquidity)
+    const ethRaw = L * (1 / sqrtP - 1 / sqrtPriceHigh)
+    const zeusRaw = L * (sqrtP - sqrtPriceLow)
+    const ethHuman = ethRaw / 10 ** ETH_DECIMALS
+    const zeusHuman = zeusRaw / 10 ** ZEUS_DECIMALS
+    const tvl = ethHuman * ethPriceUsd + zeusHuman * zeusPriceUsd
+    return isFinite(tvl) && tvl > 0 ? tvl : 0
+  } catch {
+    return 0
+  }
 }
 
 const TIMEFRAMES = [
@@ -175,7 +194,9 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
     if (!series) return
 
     // Collect valid rects for all positions
-    type RawBand = { top: number; bottom: number; mcapLow: number; mcapHigh: number; liq: bigint; inRange: boolean }
+    const currentMcap = priceData?.marketCapUsd ?? 0
+    const zeusPriceUsd = priceData ? priceData.marketCapUsd / (Number(totalSupplyRaw) / 10 ** ZEUS_DECIMALS) : 0
+    type RawBand = { top: number; bottom: number; mcapLow: number; mcapHigh: number; liq: bigint; tvlUsd: number; inRange: boolean }
     const rawBands: RawBand[] = []
 
     for (const pos of positionsData.positions) {
@@ -201,10 +222,15 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
 
         if (height < 2) continue
 
-        const currentMcap = priceData?.marketCapUsd ?? 0
         const inRange = currentMcap >= mcapLow && currentMcap <= mcapHigh
+        const liq = BigInt(pos.liquidity)
+        // Derive current tick from current mcap
+        const currentTickApprox = inRange
+          ? Math.round((pos.tickLower + pos.tickUpper) / 2)
+          : currentMcap < mcapLow ? pos.tickLower : pos.tickUpper
+        const tvlUsd = calcTvlUsd(liq, pos.tickLower, pos.tickUpper, currentTickApprox, ethPriceUsd, zeusPriceUsd)
 
-        rawBands.push({ top, bottom, mcapLow, mcapHigh, liq: BigInt(pos.liquidity), inRange })
+        rawBands.push({ top, bottom, mcapLow, mcapHigh, liq, tvlUsd, inRange })
       } catch {
         // ignore positions with invalid ticks
       }
@@ -223,6 +249,7 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
           last.mcapLow = Math.min(last.mcapLow, rb.mcapLow)
           last.mcapHigh = Math.max(last.mcapHigh, rb.mcapHigh)
           last.totalLiquidity += rb.liq
+          last.tvlUsd += rb.tvlUsd
           last.count += 1
           last.inRange = last.inRange || rb.inRange
           continue
@@ -234,6 +261,7 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
         mcapLow: rb.mcapLow,
         mcapHigh: rb.mcapHigh,
         totalLiquidity: rb.liq,
+        tvlUsd: rb.tvlUsd,
         count: 1,
         inRange: rb.inRange,
       })
@@ -429,6 +457,10 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
           >
             <div style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: "0.4rem" }}>
               {tooltip.band.count} {tooltip.band.count === 1 ? "position" : "positions"}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.3rem" }}>
+              <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>TVL</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: "1rem", color: "#fff" }}>{fmtTvl(tooltip.band.tvlUsd)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>Range</span>
