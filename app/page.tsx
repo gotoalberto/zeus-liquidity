@@ -6,6 +6,7 @@ import { MarketStats } from "@/components/ui/MarketStats"
 import { PositionsList } from "@/components/positions/PositionsList"
 import { AddLiquidityForm } from "@/components/liquidity/AddLiquidityForm"
 import { AprDisplay } from "@/components/ui/AprDisplay"
+import { FeeLeaderboard } from "@/components/ui/FeeLeaderboard"
 import { useAppKit } from "@reown/appkit/react"
 import { useAccount } from "wagmi"
 
@@ -226,6 +227,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ── LEADERBOARD ── */}
+      <FeeLeaderboard />
 
       {/* ── POSITIONS ── */}
       <PositionsList />
