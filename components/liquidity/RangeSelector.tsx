@@ -26,6 +26,8 @@ export function RangeSelector({ onRangeChange, initialMinMcap, initialMaxMcap }:
   const [minMcap, setMinMcap] = useState<string>(initialMinMcap ? initialMinMcap.toFixed(0) : "")
   const [maxMcap, setMaxMcap] = useState<string>(initialMaxMcap ? initialMaxMcap.toFixed(0) : "")
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [minFocused, setMinFocused] = useState(false)
+  const [maxFocused, setMaxFocused] = useState(false)
 
   // Apply externally injected initial values when they change
   useEffect(() => {
@@ -144,9 +146,11 @@ export function RangeSelector({ onRangeChange, initialMinMcap, initialMaxMcap }:
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           <label style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>Min Market Cap (USD)</label>
           <input
-            type="number"
-            value={minMcap}
-            onChange={(e) => setMinMcap(e.target.value)}
+            type="text"
+            value={minFocused ? minMcap : (minMcapNum >= 1000 ? formatCurrency(minMcapNum) : minMcap)}
+            onFocus={() => setMinFocused(true)}
+            onChange={(e) => { const v = e.target.value; if (v === "" || /^[\d.]+$/.test(v)) setMinMcap(v) }}
+            onBlur={() => setMinFocused(false)}
             placeholder="1000000"
             className="input-zeus"
           />
@@ -160,9 +164,11 @@ export function RangeSelector({ onRangeChange, initialMinMcap, initialMaxMcap }:
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           <label style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>Max Market Cap (USD)</label>
           <input
-            type="number"
-            value={maxMcap}
-            onChange={(e) => setMaxMcap(e.target.value)}
+            type="text"
+            value={maxFocused ? maxMcap : (maxMcapNum >= 1000 ? formatCurrency(maxMcapNum) : maxMcap)}
+            onFocus={() => setMaxFocused(true)}
+            onChange={(e) => { const v = e.target.value; if (v === "" || /^[\d.]+$/.test(v)) setMaxMcap(v) }}
+            onBlur={() => setMaxFocused(false)}
             placeholder="10000000"
             className="input-zeus"
           />
