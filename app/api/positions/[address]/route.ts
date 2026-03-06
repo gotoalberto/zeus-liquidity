@@ -13,6 +13,7 @@ import {
   getV4PositionInfo,
   buildPosition,
   serializePosition,
+  getBlockTimestamps,
 } from "@/lib/uniswap/positions"
 import { getZeusPriceData, getEthPriceUsd } from "@/lib/services/coingecko"
 
@@ -32,7 +33,7 @@ export async function GET(
 
   try {
     // Fetch price data and chain data in parallel
-    const [priceData, ethPriceUsd, tokenIds, currentTick] = await Promise.all([
+    const [priceData, ethPriceUsd, tokenEntries, currentTick] = await Promise.all([
       getZeusPriceData(),
       getEthPriceUsd(),
       getUserPositionTokenIds(address),
@@ -42,16 +43,21 @@ export async function GET(
     const zeusPriceUsd = priceData.priceUsd
     const totalSupplyRaw = priceData.totalSupply
 
+    // Batch-fetch mint block timestamps
+    const blockTimestamps = await getBlockTimestamps(tokenEntries.map((e) => e.mintBlock))
+
     // Fetch info for each tokenId in parallel
     const positionInfos = await Promise.all(
-      tokenIds.map((tokenId) => getV4PositionInfo(tokenId).then((info) => ({ tokenId, info })))
+      tokenEntries.map(({ tokenId, mintBlock }) =>
+        getV4PositionInfo(tokenId).then((info) => ({ tokenId, mintBlock, info }))
+      )
     )
 
     // Build full positions (includes fee calculation)
     const positions = await Promise.all(
       positionInfos
         .filter(({ info }) => info !== null)
-        .map(({ tokenId, info }) =>
+        .map(({ tokenId, mintBlock, info }) =>
           buildPosition(
             tokenId,
             info!.tickLower,
@@ -61,7 +67,8 @@ export async function GET(
             ethPriceUsd,
             zeusPriceUsd,
             totalSupplyRaw,
-            address
+            address,
+            blockTimestamps.get(mintBlock) ?? 0
           )
         )
     )

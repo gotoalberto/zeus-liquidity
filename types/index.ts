@@ -97,6 +97,7 @@ export interface Position {
   minPriceEth: number
   maxPriceEth: number
   uncollectedFeesUsd: number
+  openedAt: number // Unix timestamp (seconds) of the mint block
 }
 
 export interface PositionInfo {

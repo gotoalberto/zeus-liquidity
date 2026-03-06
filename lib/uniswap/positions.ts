@@ -73,9 +73,11 @@ export async function getCurrentPoolTick(): Promise<number> {
 
 /**
  * Get all position NFT token IDs currently owned by an address.
- * Fetches Transfer-in and Transfer-out events, returns only tokens still held.
+ * Returns tokenId + the blockNumber of the first Transfer-in (mint block).
  */
-export async function getUserPositionTokenIds(userAddress: string): Promise<bigint[]> {
+export async function getUserPositionTokenIds(
+  userAddress: string
+): Promise<{ tokenId: bigint; mintBlock: string }[]> {
   try {
     const currentBlockResp = await alchemyBatchRpcCall([{ method: "eth_blockNumber", params: [] }])
     const currentBlock = parseInt(currentBlockResp[0], 16)
@@ -99,16 +101,47 @@ export async function getUserPositionTokenIds(userAddress: string): Promise<bigi
       }),
     ])
 
-    const received = new Set(logsIn.map((l) => BigInt(l.topics[3]).toString()))
+    // Track earliest Transfer-in block per tokenId
+    const mintBlockByToken = new Map<string, string>()
+    for (const l of logsIn) {
+      const id = BigInt(l.topics[3]).toString()
+      if (!mintBlockByToken.has(id)) mintBlockByToken.set(id, l.blockNumber)
+    }
+
     const sent = new Set(logsOut.map((l) => BigInt(l.topics[3]).toString()))
 
     // Only keep tokens received but not sent away / burned
-    const owned = [...received].filter((id) => !sent.has(id))
-    return owned.map((id) => BigInt(id))
+    return [...mintBlockByToken.entries()]
+      .filter(([id]) => !sent.has(id))
+      .map(([id, mintBlock]) => ({ tokenId: BigInt(id), mintBlock }))
   } catch (error) {
     console.error("Failed to fetch position token IDs:", error)
     return []
   }
+}
+
+/**
+ * Batch-fetch block timestamps for a list of block numbers (hex strings).
+ * Returns a map of blockNumber → unix timestamp (seconds).
+ */
+export async function getBlockTimestamps(
+  blockNumbers: string[]
+): Promise<Map<string, number>> {
+  const unique = [...new Set(blockNumbers)]
+  if (unique.length === 0) return new Map()
+
+  const results = await alchemyBatchRpcCall(
+    unique.map((b) => ({ method: "eth_getBlockByNumber", params: [b, false] }))
+  )
+
+  const map = new Map<string, number>()
+  for (let i = 0; i < unique.length; i++) {
+    const block = results[i]
+    if (block?.timestamp) {
+      map.set(unique[i], parseInt(block.timestamp, 16))
+    }
+  }
+  return map
 }
 
 /**
@@ -281,7 +314,8 @@ export async function buildPosition(
   ethPriceUsd: number,
   zeusPriceUsd: number,
   totalSupplyRaw: bigint,
-  owner: string
+  owner: string,
+  openedAt: number = 0
 ): Promise<Position> {
   const sqrtPriceCurrent = tickToSqrtPriceX96(currentTick)
   const { amount0, amount1 } = getAmountsForLiquidity(sqrtPriceCurrent, tickLower, tickUpper, liquidity)
@@ -328,6 +362,7 @@ export async function buildPosition(
     minPriceEth,
     maxPriceEth,
     uncollectedFeesUsd,
+    openedAt,
   }
 }
 

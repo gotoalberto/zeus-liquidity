@@ -76,17 +76,24 @@ export function PublicPositionCard({ position, ethPriceUsd, zeusPriceUsd, feeHis
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
-            #{position.tokenId.toString()}
-          </span>
-          <span style={{
-            fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
-            padding: "0.25rem 0.75rem", borderRadius: "9999px",
-            background: s.bg, border: `1px solid ${s.border}`, color: s.text,
-          }}>
-            {s.label}
-          </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
+              #{position.tokenId.toString()}
+            </span>
+            <span style={{
+              fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+              padding: "0.25rem 0.75rem", borderRadius: "9999px",
+              background: s.bg, border: `1px solid ${s.border}`, color: s.text,
+            }}>
+              {s.label}
+            </span>
+          </div>
+          {position.openedAt > 0 && (
+            <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+              Opened {new Date(position.openedAt * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+            </span>
+          )}
         </div>
         <div style={{ textAlign: "right" }}>
           <p style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", color: "#fff", lineHeight: 1.1 }}>

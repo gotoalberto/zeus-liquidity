@@ -16,18 +16,20 @@ export function usePositions() {
     queryFn: async () => {
       if (!address || !priceData || !ethPriceUsd) return []
 
-      const [tokenIds, currentTick] = await Promise.all([
+      const [tokenEntries, currentTick] = await Promise.all([
         getUserPositionTokenIds(address),
         getCurrentPoolTick(),
       ])
 
-      if (tokenIds.length === 0) return []
+      if (tokenEntries.length === 0) return []
 
-      const positionInfos = await Promise.all(tokenIds.map((id) => getV4PositionInfo(id)))
+      const positionInfos = await Promise.all(
+        tokenEntries.map(({ tokenId }) => getV4PositionInfo(tokenId))
+      )
 
       const positions = await Promise.all(
         positionInfos
-          .map((info, i) => ({ info, tokenId: tokenIds[i] }))
+          .map((info, i) => ({ info, tokenId: tokenEntries[i].tokenId }))
           .filter(({ info }) => info !== null && info!.liquidity > 0n)
           .map(({ info, tokenId }) =>
             buildPosition(
