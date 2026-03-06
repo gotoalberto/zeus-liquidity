@@ -33,9 +33,21 @@ function fmtZeus(value: number): string {
 }
 
 function fmtUsd(value: number): string {
+  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`
+  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
   if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`
   return `$${value.toFixed(2)}`
+}
+
+// Uniswap V4 max tick rounded to tickSpacing=60
+const MAX_TICK_BOUNDARY = 887220
+const MIN_TICK_BOUNDARY = -887220
+
+function fmtMcap(value: number, tick: number): string {
+  if (tick >= MAX_TICK_BOUNDARY) return "∞"
+  if (tick <= MIN_TICK_BOUNDARY) return "$0"
+  return fmtUsd(value)
 }
 
 const STATUS = {
@@ -61,6 +73,8 @@ export function PublicPositionCard({ position, ethPriceUsd, zeusPriceUsd, feeHis
 
   const mcapLow  = Math.min(position.minMcap, position.maxMcap)
   const mcapHigh = Math.max(position.minMcap, position.maxMcap)
+  const tickLow  = Math.min(position.tickLower, position.tickUpper)
+  const tickHigh = Math.max(position.tickLower, position.tickUpper)
 
   // Filter fee history for this position
   const posFeeHistory = feeHistory.filter((f) => f.tokenId === position.tokenId.toString())
@@ -116,9 +130,9 @@ export function PublicPositionCard({ position, ethPriceUsd, zeusPriceUsd, feeHis
           Market Cap Range
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.125rem", color: "var(--highlight)" }}>{fmtUsd(mcapLow)}</span>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.125rem", color: "var(--highlight)" }}>{fmtMcap(mcapLow, tickLow)}</span>
           <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>→</span>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.125rem", color: "var(--highlight)" }}>{fmtUsd(mcapHigh)}</span>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.125rem", color: "var(--highlight)" }}>{fmtMcap(mcapHigh, tickHigh)}</span>
         </div>
       </div>
 
