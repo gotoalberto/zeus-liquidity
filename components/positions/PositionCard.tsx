@@ -461,7 +461,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
               opacity: isBusy ? 0.5 : 1, transition: "all 0.15s",
             }}
           >
-            {isClosing || isCloseConfirming ? "Closing..." : "Close Position"}
+            {isClosing || isCloseConfirming ? "Closing..." : "Close Position & Withdraw"}
           </button>
         </div>
       )}
