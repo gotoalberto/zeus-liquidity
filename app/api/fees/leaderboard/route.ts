@@ -240,12 +240,13 @@ async function buildLeaderboard() {
     growthByRange.set(key, { g0: BigInt("0x" + h.slice(0, 64)), g1: BigInt("0x" + h.slice(64, 128)) })
   })
 
-  // Aggregate fees per owner
+  // Aggregate fees per owner — only include owners with at least one open position (liquidity > 0)
   const Q128 = 2n ** 128n
 
-  // Pre-seed all NFT holders with 0 fees so holders with 0 liquidity still appear
+  // Pre-seed only owners that have at least one open position
   const ownerFees = new Map<string, { feesUsd: number; positions: number }>()
-  for (const { owner } of flat) {
+  for (const { idx } of activePositions) {
+    const owner = flat[idx].owner
     const cur = ownerFees.get(owner) ?? { feesUsd: 0, positions: 0 }
     ownerFees.set(owner, { feesUsd: cur.feesUsd, positions: cur.positions + 1 })
   }
