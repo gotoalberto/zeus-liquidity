@@ -44,9 +44,6 @@ export function FeeLeaderboard() {
 
   const leaderboard = data?.leaderboard ?? []
 
-  // Don't render if empty and not loading
-  if (!isLoading && leaderboard.length === 0) return null
-
   return (
     <section id="leaderboard" style={{ padding: "5rem 1.5rem" }}>
       <div style={{ maxWidth: 860, margin: "0 auto" }}>
@@ -63,6 +60,16 @@ export function FeeLeaderboard() {
             {[...Array(5)].map((_, i) => (
               <div key={i} className="skeleton" style={{ height: 56, borderRadius: "0.875rem" }} />
             ))}
+          </div>
+        ) : leaderboard.length === 0 ? (
+          <div style={{
+            textAlign: "center", padding: "3rem 2rem",
+            background: "var(--glass-bg)", border: "1px solid var(--glass-border)",
+            borderRadius: "1.25rem", backdropFilter: "blur(12px)",
+          }}>
+            <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+              No fees collected yet. Be the first defender to collect!
+            </p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
