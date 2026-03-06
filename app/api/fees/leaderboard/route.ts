@@ -294,7 +294,8 @@ export async function GET() {
     await saveCache(leaderboard)
     return NextResponse.json({ leaderboard, cached: false })
   } catch (error) {
-    console.error("Leaderboard error:", error)
-    return NextResponse.json({ error: "Failed to build leaderboard" }, { status: 500 })
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error("Leaderboard error:", msg)
+    return NextResponse.json({ error: "Failed to build leaderboard", detail: msg }, { status: 500 })
   }
 }
