@@ -267,20 +267,20 @@ async function buildLeaderboard() {
   // ── Step 5: load previous snapshots, detect collected fees, update DB ─────────
   const db = process.env.DATABASE_URL ? getDb() : null
 
-  // Load previous snapshots for all active tokenIds
-  const tokenIds = [...pendingByToken.keys()]
-  const prevSnapshots = new Map<string, { pendingUsd: number; accumulatedUsd: number }>()
+  // Load ALL snapshots that have pending fees — not just currently active ones.
+  // This allows us to detect when a position was closed (no longer active) and
+  // credit its previously-tracked pending fees to accumulated.
+  const allPrevSnapshots = new Map<string, { owner: string; pendingUsd: number; accumulatedUsd: number }>()
 
-  if (db && tokenIds.length > 0) {
+  if (db) {
     try {
       const rows = await db.query(
-        `SELECT token_id, pending_usd::float, accumulated_usd::float
-         FROM zeus_position_fees_snapshot
-         WHERE token_id = ANY($1)`,
-        [tokenIds]
+        `SELECT token_id, owner, pending_usd::float, accumulated_usd::float
+         FROM zeus_position_fees_snapshot`
       )
       for (const row of rows.rows) {
-        prevSnapshots.set(row.token_id, {
+        allPrevSnapshots.set(row.token_id, {
+          owner: row.owner,
           pendingUsd: parseFloat(row.pending_usd),
           accumulatedUsd: parseFloat(row.accumulated_usd),
         })
@@ -290,11 +290,11 @@ async function buildLeaderboard() {
     }
   }
 
-  // Compute new accumulated values and upsert snapshots
+  // Compute new accumulated values and upsert snapshots for currently active positions
   const newSnapshots: { tokenId: string; owner: string; pendingUsd: number; accumulatedUsd: number }[] = []
 
   for (const [tokenId, { owner, pendingUsd }] of pendingByToken) {
-    const prev = prevSnapshots.get(tokenId)
+    const prev = allPrevSnapshots.get(tokenId)
     let accumulatedUsd = prev?.accumulatedUsd ?? 0
 
     // If pending dropped since last snapshot, user collected fees — add the difference
@@ -305,25 +305,57 @@ async function buildLeaderboard() {
     newSnapshots.push({ tokenId, owner, pendingUsd, accumulatedUsd })
   }
 
-  if (db && newSnapshots.length > 0) {
-    try {
-      // Bulk upsert snapshots
-      const values = newSnapshots.map((_, i) =>
-        `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4}, NOW())`
-      ).join(", ")
-      const params = newSnapshots.flatMap(s => [s.tokenId, s.owner, s.pendingUsd, s.accumulatedUsd])
-      await db.query(
-        `INSERT INTO zeus_position_fees_snapshot (token_id, owner, pending_usd, accumulated_usd, updated_at)
-         VALUES ${values}
-         ON CONFLICT (token_id) DO UPDATE
-           SET owner = EXCLUDED.owner,
-               pending_usd = EXCLUDED.pending_usd,
-               accumulated_usd = EXCLUDED.accumulated_usd,
-               updated_at = EXCLUDED.updated_at`,
-        params
-      )
-    } catch (e) {
-      console.error("Failed to upsert fee snapshots:", e)
+  // For positions that were previously tracked with pending fees but are now gone
+  // (closed/burned — no longer in activePositions), credit their pending as collected.
+  const activeTokenIdSet = new Set(pendingByToken.keys())
+  const closedWithFees: { tokenId: string; owner: string; accumulatedUsd: number }[] = []
+  for (const [tokenId, prev] of allPrevSnapshots) {
+    if (!activeTokenIdSet.has(tokenId) && prev.pendingUsd > 0.001) {
+      // Position closed with pending fees — credit them as collected
+      closedWithFees.push({
+        tokenId,
+        owner: prev.owner,
+        accumulatedUsd: prev.accumulatedUsd + prev.pendingUsd,
+      })
+    }
+  }
+
+  if (db) {
+    // Upsert active position snapshots
+    if (newSnapshots.length > 0) {
+      try {
+        const values = newSnapshots.map((_, i) =>
+          `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4}, NOW())`
+        ).join(", ")
+        const params = newSnapshots.flatMap(s => [s.tokenId, s.owner, s.pendingUsd, s.accumulatedUsd])
+        await db.query(
+          `INSERT INTO zeus_position_fees_snapshot (token_id, owner, pending_usd, accumulated_usd, updated_at)
+           VALUES ${values}
+           ON CONFLICT (token_id) DO UPDATE
+             SET owner = EXCLUDED.owner,
+                 pending_usd = EXCLUDED.pending_usd,
+                 accumulated_usd = EXCLUDED.accumulated_usd,
+                 updated_at = EXCLUDED.updated_at`,
+          params
+        )
+      } catch (e) {
+        console.error("Failed to upsert fee snapshots:", e)
+      }
+    }
+    // Credit pending fees for closed positions (pending → accumulated, pending reset to 0)
+    if (closedWithFees.length > 0) {
+      try {
+        for (const { tokenId, owner, accumulatedUsd } of closedWithFees) {
+          await db.query(
+            `UPDATE zeus_position_fees_snapshot
+             SET pending_usd = 0, accumulated_usd = $1, updated_at = NOW()
+             WHERE token_id = $2 AND owner = $3`,
+            [accumulatedUsd, tokenId, owner]
+          )
+        }
+      } catch (e) {
+        console.error("Failed to credit closed position fees:", e)
+      }
     }
   }
 
