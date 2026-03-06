@@ -16,6 +16,7 @@ import { getZeusPriceData, getEthPriceUsd } from "@/lib/services/coingecko"
 import {
   ZEUS_DECIMALS,
   UNISWAP_V4_POSITION_MANAGER,
+  UNISWAP_V4_POOL_MANAGER,
   UNISWAP_V4_STATE_VIEW,
   ZEUS_TOKEN_ADDRESS,
   POOL_FEE,
@@ -93,60 +94,77 @@ async function buildLeaderboard() {
   const poolId = computePoolId()
   const ownerHex = UNISWAP_V4_POSITION_MANAGER.slice(2).toLowerCase().padStart(64, "0")
 
-  // Step 1: scan Transfer events to get owner→tokenIds map
-  // Use Alchemy's getNFTsForContract or a single large getLogs call.
-  // The V4 PositionManager has few holders so all transfers fit in one call.
+  // Step 1: get all ZEUS pool tokenIds from ModifyLiquidity events (salt field = tokenId).
+  // These events are already filtered to the ZEUS poolId, so no payload issues.
+  const MODIFY_LIQUIDITY_TOPIC = "0xf208f4912782fd25c7f114ca3723a2d5dd6f3bcc3ac8db5af63baa85f711d5ec"
+
   const blockHex = await rpcSingle<string>("eth_blockNumber")
   const currentBlock = parseInt(blockHex, 16)
 
-  // Try a single call first (Alchemy allows up to 10k logs per call)
-  let allLogs: { topics: string[] }[] = []
-  try {
-    allLogs = await rpcSingle<{ topics: string[] }[]>("eth_getLogs", [{
-      address: UNISWAP_V4_POSITION_MANAGER,
-      fromBlock: `0x${V4_LAUNCH_BLOCK.toString(16)}`,
-      toBlock: "latest",
-      topics: [TRANSFER_TOPIC],
-    }])
-  } catch {
-    // If too many logs, fall back to chunked parallel fetch
-    const chunks: { from: number; to: number }[] = []
-    for (let start = V4_LAUNCH_BLOCK; start <= currentBlock; start += CHUNK_SIZE) {
-      chunks.push({ from: start, to: Math.min(start + CHUNK_SIZE - 1, currentBlock) })
-    }
-    for (let i = 0; i < chunks.length; i += PARALLEL) {
-      const batch = chunks.slice(i, i + PARALLEL)
-      const results = await Promise.all(
-        batch.map(({ from, to }) =>
-          rpcSingle<{ topics: string[] }[]>("eth_getLogs", [{
-            address: UNISWAP_V4_POSITION_MANAGER,
-            fromBlock: `0x${from.toString(16)}`,
-            toBlock: `0x${to.toString(16)}`,
-            topics: [TRANSFER_TOPIC],
-          }])
-        )
-      )
-      for (const logs of results) allLogs.push(...logs)
-    }
+  const chunks: { from: number; to: number }[] = []
+  for (let start = V4_LAUNCH_BLOCK; start <= currentBlock; start += CHUNK_SIZE) {
+    chunks.push({ from: start, to: Math.min(start + CHUNK_SIZE - 1, currentBlock) })
   }
 
-  const holdings = new Map<string, Set<string>>()
-  for (const log of allLogs) {
-    const from = "0x" + log.topics[1].slice(26).toLowerCase()
-    const to   = "0x" + log.topics[2].slice(26).toLowerCase()
-    const id   = BigInt(log.topics[3]).toString()
-    if (from !== ZERO_ADDR) holdings.get(from)?.delete(id)
-    if (to !== ZERO_ADDR) {
-      if (!holdings.has(to)) holdings.set(to, new Set())
-      holdings.get(to)!.add(id)
+  // Fetch ModifyLiquidity logs for our specific pool (small result set)
+  const modifyLogs: { data: string }[] = []
+  for (let i = 0; i < chunks.length; i += PARALLEL) {
+    const batch = chunks.slice(i, i + PARALLEL)
+    const results = await Promise.all(
+      batch.map(({ from, to }) =>
+        rpcSingle<{ data: string }[]>("eth_getLogs", [{
+          address: UNISWAP_V4_POOL_MANAGER,
+          fromBlock: `0x${from.toString(16)}`,
+          toBlock: `0x${to.toString(16)}`,
+          topics: [MODIFY_LIQUIDITY_TOPIC, poolId],
+        }])
+      )
+    )
+    for (const logs of results) modifyLogs.push(...logs)
+  }
+
+  // Extract unique tokenIds from salt (last 32 bytes of event data)
+  const zeusTokenIds = new Set<string>()
+  for (const log of modifyLogs) {
+    const d = log.data.slice(2)
+    if (d.length < 256) continue // need at least 4 words
+    const salt = d.slice(192, 256) // 4th word = salt = tokenId
+    const tokenId = BigInt("0x" + salt)
+    if (tokenId > 0n) zeusTokenIds.add(tokenId.toString())
+  }
+
+  if (zeusTokenIds.size === 0) return []
+
+  // Step 2: for each ZEUS tokenId, get Transfer events filtered by that tokenId.
+  // Fetch in parallel batches — there are few ZEUS positions so few unique tokenIds.
+  const tokenIdList = [...zeusTokenIds]
+  const transferResults = await Promise.all(
+    tokenIdList.map((id) => {
+      const paddedId = "0x" + BigInt(id).toString(16).padStart(64, "0")
+      return rpcSingle<{ topics: string[] }[]>("eth_getLogs", [{
+        address: UNISWAP_V4_POSITION_MANAGER,
+        fromBlock: `0x${V4_LAUNCH_BLOCK.toString(16)}`,
+        toBlock: "latest",
+        topics: [TRANSFER_TOPIC, null, null, paddedId],
+      }])
+    })
+  )
+
+  // Build owner map from Transfer events
+  const currentOwner = new Map<string, string>() // tokenId → current owner
+  for (let i = 0; i < tokenIdList.length; i++) {
+    const id = tokenIdList[i]
+    const logs = transferResults[i]
+    // Sort by... logs are in order. Last Transfer determines current owner.
+    for (const log of logs) {
+      const to = "0x" + log.topics[2].slice(26).toLowerCase()
+      currentOwner.set(id, to === ZERO_ADDR ? "" : to)
     }
   }
 
   const flat: { owner: string; tokenId: bigint }[] = []
-  for (const [owner, ids] of holdings) {
-    for (const id of ids) {
-      if (ids.size > 0) flat.push({ owner, tokenId: BigInt(id) })
-    }
+  for (const [id, owner] of currentOwner) {
+    if (owner) flat.push({ owner, tokenId: BigInt(id) })
   }
 
   if (flat.length === 0) return []
