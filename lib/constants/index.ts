@@ -24,6 +24,7 @@ export const DECIMAL_ADJUSTMENT = 10 ** (ZEUS_DECIMALS - ETH_DECIMALS)
 
 export const UNISWAP_V4_POSITION_MANAGER = "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e" as const
 export const UNISWAP_V4_POOL_MANAGER = "0x000000000004444c5dc75cB358380D2e3dE08A90" as const
+export const UNISWAP_V4_STATE_VIEW = "0x7ffe42c4a5deea5b0fec41c94c136cf115597227" as const
 
 // ============================================================================
 // Pool Configuration

@@ -15,6 +15,7 @@ import { getLogs, ethCall, alchemyBatchRpcCall } from "@/lib/services/alchemy"
 import {
   UNISWAP_V4_POSITION_MANAGER,
   UNISWAP_V4_POOL_MANAGER,
+  UNISWAP_V4_STATE_VIEW,
   ZEUS_TOKEN_ADDRESS,
   ZEUS_DECIMALS,
   POOL_FEE,
@@ -200,6 +201,75 @@ function tickToSqrtPriceX96(tick: number): bigint {
 }
 
 /**
+ * Get uncollected fees for a V4 position using StateView.
+ *
+ * Uses:
+ *   - getPositionInfo(poolId, owner=PositionManager, tickLower, tickUpper, salt=tokenId)
+ *     → feeGrowthInside0LastX128, feeGrowthInside1LastX128
+ *   - getFeeGrowthInside(poolId, tickLower, tickUpper)
+ *     → current feeGrowthInside0X128, feeGrowthInside1X128
+ *
+ * pendingFees = (feeGrowthInsideCurrent - feeGrowthInsideLast) * liquidity / 2^128
+ */
+export async function getPositionFees(
+  tokenId: bigint,
+  tickLower: number,
+  tickUpper: number,
+  liquidity: bigint
+): Promise<{ tokensOwed0: bigint; tokensOwed1: bigint }> {
+  try {
+    if (liquidity === 0n) return { tokensOwed0: 0n, tokensOwed1: 0n }
+    const poolId = computePoolId()
+
+    // ABI-encode int24 as int256 (sign-extend to 32 bytes)
+    const encodeInt24 = (v: number) => (v < 0 ? (BigInt(v) + (1n << 256n)) : BigInt(v)).toString(16).padStart(64, "0")
+    const tickLowerHex = encodeInt24(tickLower)
+    const tickUpperHex = encodeInt24(tickUpper)
+    const saltHex = tokenId.toString(16).padStart(64, "0")
+    const ownerHex = UNISWAP_V4_POSITION_MANAGER.slice(2).toLowerCase().padStart(64, "0")
+
+    // getPositionInfo(bytes32,address,int24,int24,bytes32) selector: 0xdacf1d2f
+    const posInfoData = `0xdacf1d2f${poolId.slice(2)}${ownerHex}${tickLowerHex}${tickUpperHex}${saltHex}` as `0x${string}`
+
+    // getFeeGrowthInside(bytes32,int24,int24) selector: 0x53e9c1fb
+    const feeGrowthData = `0x53e9c1fb${poolId.slice(2)}${tickLowerHex}${tickUpperHex}` as `0x${string}`
+
+    const [posInfoResult, feeGrowthResult] = await Promise.all([
+      ethCall({ to: UNISWAP_V4_STATE_VIEW, data: posInfoData }),
+      ethCall({ to: UNISWAP_V4_STATE_VIEW, data: feeGrowthData }),
+    ])
+
+    if (!posInfoResult || posInfoResult === "0x" || !feeGrowthResult || feeGrowthResult === "0x") {
+      return { tokensOwed0: 0n, tokensOwed1: 0n }
+    }
+
+    // getPositionInfo returns (uint128 liquidity, uint256 feeGrowthInside0Last, uint256 feeGrowthInside1Last)
+    // ABI encoding: slot0=32bytes (uint128 right-aligned), slot1=32bytes, slot2=32bytes
+    const posHex = (posInfoResult as string).slice(2)
+    const feeGrowthInside0Last = BigInt("0x" + posHex.slice(64, 128))   // slot 1
+    const feeGrowthInside1Last = BigInt("0x" + posHex.slice(128, 192))  // slot 2
+
+    // getFeeGrowthInside returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
+    const feeHex = (feeGrowthResult as string).slice(2)
+    const feeGrowthInside0Now = BigInt("0x" + feeHex.slice(0, 64))
+    const feeGrowthInside1Now = BigInt("0x" + feeHex.slice(64, 128))
+
+    const Q128 = 2n ** 128n
+    // Use modular subtraction to handle uint256 wraparound
+    const delta0 = (feeGrowthInside0Now - feeGrowthInside0Last + Q128 * Q128) % (Q128 * Q128)
+    const delta1 = (feeGrowthInside1Now - feeGrowthInside1Last + Q128 * Q128) % (Q128 * Q128)
+
+    const tokensOwed0 = (delta0 * liquidity) / Q128
+    const tokensOwed1 = (delta1 * liquidity) / Q128
+
+    return { tokensOwed0, tokensOwed1 }
+  } catch (err) {
+    console.error("getPositionFees error:", err)
+    return { tokensOwed0: 0n, tokensOwed1: 0n }
+  }
+}
+
+/**
  * Enrich a V4 position with USD values and market data
  */
 export async function buildPosition(
@@ -234,6 +304,11 @@ export async function buildPosition(
     status = "out-of-range"
   }
 
+  const { tokensOwed0, tokensOwed1 } = await getPositionFees(tokenId, tickLower, tickUpper, liquidity)
+  const feesEthUsd = (Number(tokensOwed0) / 1e18) * ethPriceUsd
+  const feesZeusUsd = (Number(tokensOwed1) / 10 ** ZEUS_DECIMALS) * zeusPriceUsd
+  const uncollectedFeesUsd = feesEthUsd + feesZeusUsd
+
   return {
     tokenId,
     owner,
@@ -242,8 +317,8 @@ export async function buildPosition(
     liquidity,
     feeGrowthInside0LastX128: 0n,
     feeGrowthInside1LastX128: 0n,
-    tokensOwed0: 0n,
-    tokensOwed1: 0n,
+    tokensOwed0,
+    tokensOwed1,
     amount0,
     amount1,
     totalValueUsd,
@@ -252,6 +327,6 @@ export async function buildPosition(
     maxMcap,
     minPriceEth,
     maxPriceEth,
-    uncollectedFeesUsd: 0,
+    uncollectedFeesUsd,
   }
 }
