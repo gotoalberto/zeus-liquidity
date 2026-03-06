@@ -5,8 +5,13 @@
  * Used for fetching positions, balances, and making contract calls
  */
 
-// RPC proxy endpoint — keeps Alchemy key server-side
-const RPC_PROXY = "/api/rpc"
+// Server-side: call Alchemy directly. Client-side: use proxy to hide the key.
+function getRpcUrl(): string {
+  if (typeof window === "undefined" && process.env.ALCHEMY_API_KEY) {
+    return `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
+  }
+  return "/api/rpc"
+}
 
 // ============================================================================
 // RPC Client
@@ -16,7 +21,7 @@ export async function alchemyRpcCall<T = any>(
   method: string,
   params: any[] = []
 ): Promise<T> {
-  const response = await fetch(RPC_PROXY, {
+  const response = await fetch(getRpcUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
@@ -155,7 +160,7 @@ export async function getGasPrice(): Promise<bigint> {
 export async function alchemyBatchRpcCall(
   calls: { method: string; params: any[] }[]
 ): Promise<any[]> {
-  const response = await fetch(RPC_PROXY, {
+  const response = await fetch(getRpcUrl(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

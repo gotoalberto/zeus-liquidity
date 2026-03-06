@@ -22,7 +22,7 @@ export const runtime = "nodejs"
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ) {
   const { address } = await params
@@ -32,9 +32,10 @@ export async function GET(
   }
 
   const normalizedAddress = address.toLowerCase()
+  const forceRefresh = req.nextUrl.searchParams.get("refresh") === "1"
 
-  // Check DB cache first
-  if (process.env.DATABASE_URL) {
+  // Check DB cache first (skip if ?refresh=1)
+  if (process.env.DATABASE_URL && !forceRefresh) {
     try {
       await ensureSchema()
       const db = getDb()
