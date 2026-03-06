@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { PriceRange } from "@/types"
-import { mcapToTick, getPresetRange } from "@/lib/uniswap/mcap"
+import { mcapToTick, tickToZeusEthPrice, getPresetRange } from "@/lib/uniswap/mcap"
 import { MCAP_RANGE_PRESETS } from "@/lib/constants"
 import { useZeusPrice, useEthPrice } from "@/hooks/useZeusPrice"
 
