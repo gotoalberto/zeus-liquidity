@@ -230,6 +230,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
   const [selectedRange, setSelectedRange] = useState<PriceRange | null>(null)
   const [ethAmount, setEthAmount] = useState<string>("")
   const [zeusAmount, setZeusAmount] = useState<string>("")
+  const [zeusInputFocused, setZeusInputFocused] = useState(false)
   const slippage = 1.0
 
   // Approval success effect
@@ -453,12 +454,12 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
               </div>
               <div style={{ position: "relative" }}>
                 <input
-                  type="number"
-                  value={zeusAmount}
-                  onChange={(e) => { const v = e.target.value; if (v === "" || parseFloat(v) >= 0) setZeusAmount(v) }}
+                  type="text"
+                  value={zeusInputFocused ? zeusAmount : (zeusAmountNum >= 1000 ? fmtZeus(zeusAmountNum) : zeusAmount)}
+                  onFocus={() => setZeusInputFocused(true)}
+                  onChange={(e) => { const v = e.target.value; if (v === "" || /^[\d.]+$/.test(v)) setZeusAmount(v) }}
+                  onBlur={() => setZeusInputFocused(false)}
                   placeholder="0.0"
-                  min="0"
-                  step="0.01"
                   className={`input-zeus ${hasInsufficientZeus ? "error" : ""}`}
                   style={{ fontSize: "1.1rem", paddingRight: "3.5rem" }}
                 />
@@ -480,7 +481,7 @@ export function AddLiquidityForm({ initialMinMcap, initialMaxMcap, onConnect }: 
             <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.75rem", padding: "1rem" }}>
               <p style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, color: "rgba(74,222,128,0.6)", marginBottom: "0.3rem" }}>Total Value</p>
               <p style={{ fontFamily: "var(--font-display)", fontSize: "1.8rem", color: "#4ade80" }}>
-                ${totalValueUsd.toFixed(2)}
+                {fmtUsd(totalValueUsd)}
               </p>
             </div>
           )}
