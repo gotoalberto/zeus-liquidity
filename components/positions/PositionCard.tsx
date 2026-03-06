@@ -139,6 +139,14 @@ function getLiquidityForAmounts(
 }
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
+function fmtZeus(value: number): string {
+  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`
+  return value.toFixed(4)
+}
+
 function fmtUsd(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
   if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`
@@ -421,7 +429,7 @@ export function PositionCard({ position, ethPriceUsd, zeusPriceUsd, currentTick,
               <p style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", color: "#4ade80", lineHeight: 1.1 }}>{fmtUsd(totalFeesUsd)}</p>
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.35rem", flexWrap: "wrap" }}>
                 {feesEth > 0 && <span style={{ fontSize: "0.7rem", color: "#a8c8ff" }}>{feesEth.toFixed(6)} ETH <span style={{ color: "var(--text-muted)" }}>({fmtUsd(feesEthUsd)})</span></span>}
-                {feesZeus > 0 && <span style={{ fontSize: "0.7rem", color: "var(--highlight)" }}>{feesZeus.toFixed(4)} ZEUS <span style={{ color: "var(--text-muted)" }}>({fmtUsd(feesZeusUsd)})</span></span>}
+                {feesZeus > 0 && <span style={{ fontSize: "0.7rem", color: "var(--highlight)" }}>{fmtZeus(feesZeus)} ZEUS <span style={{ color: "var(--text-muted)" }}>({fmtUsd(feesZeusUsd)})</span></span>}
               </div>
             </>
           ) : (
