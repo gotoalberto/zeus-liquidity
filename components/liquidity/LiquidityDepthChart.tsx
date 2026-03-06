@@ -179,24 +179,27 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
     for (const pos of positionsData.positions) {
       if (pos.tickLower >= pos.tickUpper) continue
       try {
-        const mcapLower = tickToMcap(pos.tickLower, ethPriceUsd, totalSupplyRaw)
-        const mcapUpper = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
+        // tickLower (numerically smaller) → higher mcap; tickUpper (numerically larger) → lower mcap
+        const mcapFromTickLower = tickToMcap(pos.tickLower, ethPriceUsd, totalSupplyRaw)
+        const mcapFromTickUpper = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
+        const mcapLow = Math.min(mcapFromTickLower, mcapFromTickUpper)
+        const mcapHigh = Math.max(mcapFromTickLower, mcapFromTickUpper)
 
-        const yUpper = series.priceToCoordinate(mcapUpper)
-        const yLower = series.priceToCoordinate(mcapLower)
+        const yHigh = series.priceToCoordinate(mcapHigh)
+        const yLow = series.priceToCoordinate(mcapLow)
 
-        if (yUpper === null || yLower === null) continue
+        if (yHigh === null || yLow === null) continue
 
-        const top = Math.min(yUpper, yLower)
-        const bottom = Math.max(yUpper, yLower)
+        const top = Math.min(yHigh, yLow)
+        const bottom = Math.max(yHigh, yLow)
         const height = bottom - top
 
         if (height < 2) continue
 
         const currentMcap = priceData?.marketCapUsd ?? 0
-        const inRange = currentMcap >= mcapLower && currentMcap <= mcapUpper
+        const inRange = currentMcap >= mcapLow && currentMcap <= mcapHigh
 
-        rawBands.push({ top, bottom, mcapLow: mcapLower, mcapHigh: mcapUpper, liq: BigInt(pos.liquidity), inRange })
+        rawBands.push({ top, bottom, mcapLow, mcapHigh, liq: BigInt(pos.liquidity), inRange })
       } catch {
         // ignore positions with invalid ticks
       }
@@ -237,22 +240,24 @@ export function LiquidityDepthChart({ onJoinRange }: LiquidityDepthChartProps) {
     for (const pos of positionsData.positions) {
       if (pos.tickLower >= pos.tickUpper) continue
       try {
-        const mcapLower = tickToMcap(pos.tickLower, ethPriceUsd, totalSupplyRaw)
-        const mcapUpper = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
+        const mcapA = tickToMcap(pos.tickLower, ethPriceUsd, totalSupplyRaw)
+        const mcapB = tickToMcap(pos.tickUpper, ethPriceUsd, totalSupplyRaw)
+        const mcapBandLow = Math.min(mcapA, mcapB)
+        const mcapBandHigh = Math.max(mcapA, mcapB)
 
-        const yUpper = series.priceToCoordinate(mcapUpper)
-        const yLower = series.priceToCoordinate(mcapLower)
+        const yHigh = series.priceToCoordinate(mcapBandHigh)
+        const yLow = series.priceToCoordinate(mcapBandLow)
 
-        if (yUpper === null || yLower === null) continue
+        if (yHigh === null || yLow === null) continue
 
-        const top = Math.min(yUpper, yLower)
-        const bottom = Math.max(yUpper, yLower)
+        const top = Math.min(yHigh, yLow)
+        const bottom = Math.max(yHigh, yLow)
         const height = bottom - top
 
         if (height < 2) continue
 
         const currentMcap = priceData?.marketCapUsd ?? 0
-        const inRange = currentMcap >= mcapLower && currentMcap <= mcapUpper
+        const inRange = currentMcap >= mcapBandLow && currentMcap <= mcapBandHigh
         const alpha = 0.18
         const color = inRange ? `rgba(240,230,78,${alpha})` : `rgba(67,148,244,${alpha})`
         const border = inRange ? `rgba(240,230,78,0.45)` : `rgba(67,148,244,0.35)`
